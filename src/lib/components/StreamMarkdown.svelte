@@ -13,7 +13,8 @@
 		lastBlockStart: 0,
 		stableBlocks: [] as { key: string; html: string }[],  // 已稳定块（含 key）
 		lastBlockContent: '',  // 最后块原始内容（用于跳过重复解析）
-		lastBlockHtml: ''      // 最后块渲染结果
+		lastBlockHtml: '',     // 最后块渲染结果
+		htmlCache: new Map<string, string>()  // 内容 -> HTML 缓存映射
 	};
 	
 	const DEBUG = true;
@@ -38,12 +39,20 @@
 		}).filter(Boolean) as { globalStart: number; content: string }[];
 	}
 	
-	// 渲染块并生成稳定 key（使用 globalStart 保证唯一性）
+	// 渲染块并生成稳定 key（使用缓存避免重复渲染）
 	function renderBlock(block: { globalStart: number; content: string }): { key: string; html: string } {
-		return {
-			key: `${id}-${block.globalStart}`,
-			html: micromark(block.content)
-		};
+		const key = `${id}-${block.globalStart}`;
+		
+		// 检查缓存
+		let html = cache.htmlCache.get(block.content);
+		if (!html) {
+			// 缓存未命中，执行渲染并缓存
+			html = micromark(block.content);
+			cache.htmlCache.set(block.content, html);
+			if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] render block at ${block.globalStart}`, 'color: #3498db');
+		}
+		
+		return { key, html };
 	}
 	
 	// 全量解析
@@ -53,13 +62,20 @@
 			const blocks = extractBlocks(tree, md, 0);
 			
 			if (blocks.length === 0) {
-				const html = micromark(md);
+				// 检查缓存
+				let html = cache.htmlCache.get(md);
+				if (!html) {
+					html = micromark(md);
+					cache.htmlCache.set(md, html);
+				}
+				
 				cache = {
 					lastContent: md,
 					lastBlockStart: 0,
 					stableBlocks: [],
 					lastBlockContent: md,
-					lastBlockHtml: html
+					lastBlockHtml: html,
+					htmlCache: cache.htmlCache
 				};
 				renderedBlocks = [{ key: `${id}-0`, html }];
 				return;
@@ -67,21 +83,32 @@
 			
 			const lastBlock = blocks[blocks.length - 1];
 			const stableBlocks = blocks.slice(0, -1).map(renderBlock);
-			const lastHtml = micromark(lastBlock.content);
+			
+			// 最后块也使用缓存
+			let lastHtml = cache.htmlCache.get(lastBlock.content);
+			if (!lastHtml) {
+				lastHtml = micromark(lastBlock.content);
+				cache.htmlCache.set(lastBlock.content, lastHtml);
+			}
 			
 			cache = {
 				lastContent: md,
 				lastBlockStart: lastBlock.globalStart,
 				stableBlocks,
 				lastBlockContent: lastBlock.content,
-				lastBlockHtml: lastHtml
+				lastBlockHtml: lastHtml,
+				htmlCache: cache.htmlCache
 			};
 			
-			if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] full: ${blocks.length} blocks`, 'color: #e67e22');
+			if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] full: ${blocks.length} blocks, cache size: ${cache.htmlCache.size}`, 'color: #e67e22');
 			
 			renderedBlocks = [...stableBlocks, { key: `${id}-${lastBlock.globalStart}`, html: lastHtml }];
 		} catch {
-			const html = micromark(md);
+			let html = cache.htmlCache.get(md);
+			if (!html) {
+				html = micromark(md);
+				cache.htmlCache.set(md, html);
+			}
 			renderedBlocks = [{ key: `${id}-0`, html }];
 		}
 	}
@@ -95,10 +122,15 @@
 			const tailBlocks = extractBlocks(tree, tailContent, cache.lastBlockStart);
 			
 			if (tailBlocks.length === 0) {
-				// 无块，直接渲染 tail
+				// 无块，直接渲染 tail（使用缓存）
 				if (tailContent !== cache.lastBlockContent) {
+					let html = cache.htmlCache.get(tailContent);
+					if (!html) {
+						html = micromark(tailContent);
+						cache.htmlCache.set(tailContent, html);
+					}
 					cache.lastBlockContent = tailContent;
-					cache.lastBlockHtml = micromark(tailContent);
+					cache.lastBlockHtml = html;
 				}
 				cache.lastContent = md;
 				renderedBlocks = [...cache.stableBlocks, { key: `${id}-${cache.lastBlockStart}`, html: cache.lastBlockHtml }];
@@ -109,15 +141,20 @@
 			if (tailBlocks.length > 1) {
 				const newStable = tailBlocks.slice(0, -1).map(renderBlock);
 				cache.stableBlocks = [...cache.stableBlocks, ...newStable];
-				if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] +${newStable.length} stable`, 'color: #27ae60');
+				if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] +${newStable.length} stable, cache size: ${cache.htmlCache.size}`, 'color: #27ae60');
 			}
 			
 			const lastBlock = tailBlocks[tailBlocks.length - 1];
 			
-			// 最后块内容变化才重新渲染
+			// 最后块内容变化才重新渲染（使用缓存）
 			if (lastBlock.content !== cache.lastBlockContent) {
+				let html = cache.htmlCache.get(lastBlock.content);
+				if (!html) {
+					html = micromark(lastBlock.content);
+					cache.htmlCache.set(lastBlock.content, html);
+				}
 				cache.lastBlockContent = lastBlock.content;
-				cache.lastBlockHtml = micromark(lastBlock.content);
+				cache.lastBlockHtml = html;
 			}
 			
 			cache.lastBlockStart = lastBlock.globalStart;
@@ -139,7 +176,14 @@
 			}
 			pendingContent = null;
 			renderedBlocks = [];
-			cache = { lastContent: '', lastBlockStart: 0, stableBlocks: [], lastBlockContent: '', lastBlockHtml: '' };
+			cache = { 
+				lastContent: '', 
+				lastBlockStart: 0, 
+				stableBlocks: [], 
+				lastBlockContent: '', 
+				lastBlockHtml: '',
+				htmlCache: new Map()
+			};
 			return;
 		}
 		
