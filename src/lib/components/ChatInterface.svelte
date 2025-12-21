@@ -8,7 +8,7 @@
 
 	let { apiKey, onKeyDeleted }: { apiKey: string; onKeyDeleted: () => void } = $props();
 
-	const MODEL = 'z-ai/glm-4.5-air:free';
+	const MODEL = 'xiaomi/mimo-v2-flash:free';
 
 	const chat = new Chat({
 		transport: new DefaultChatTransport({

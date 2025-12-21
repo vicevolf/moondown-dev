@@ -31,8 +31,9 @@ class SpringPhysics {
 	update(targetVelocity: number, dt: number): void {
 		// 弹簧力：拉向目标速度
 		const springForce = this.stiffness * (targetVelocity - this.velocity);
-		// 阻尼力：抵抗速度变化
-		const dampingForce = -this.damping * (this.velocity - targetVelocity) * 0.1;
+		// 阻尼力：低速时减弱，高速时增强（跑车启动特性）
+		const speedRatio = Math.min(this.velocity / 50, 1); // 50 c/s 时达到全阻尼
+		const dampingForce = -this.damping * this.velocity * speedRatio;
 		
 		// 更新速度
 		this.velocity += (springForce + dampingForce) * dt;
@@ -49,6 +50,7 @@ export class TextBuffer {
 	private displayed: string = '';
 	private isRunning: boolean = false;
 	private isEnded: boolean = false;
+	private endVelocity: number | null = null;
 	
 	private physics: SpringPhysics = new SpringPhysics();
 	private lastTick: number = 0;
@@ -79,6 +81,7 @@ export class TextBuffer {
 		this.physics.reset();
 		this.charAccumulator = 0;
 		this.isEnded = false;
+		this.endVelocity = null;
 		this.notifyUpdate();
 	}
 	
@@ -88,21 +91,17 @@ export class TextBuffer {
 	 */
 	private getTargetVelocity(): number {
 		const n = this.buffer.length;
-		const currentVelocity = this.physics.velocity;
 		
-		// 流结束：判断当前速度能否在 FLUSH_DURATION 内完成
 		if (this.isEnded) {
-			const canFinishInTime = n <= currentVelocity * FLUSH_DURATION;
-			if (canFinishInTime) {
-				// 当前速度足够，保持节奏
-				return currentVelocity;
-			} else {
-				// 需要提速，确保 FLUSH_DURATION 内完成
-				return n / FLUSH_DURATION;
+			// 首次进入结束状态，锁定目标速度
+			if (this.endVelocity === null) {
+				const currentVelocity = this.physics.velocity;
+				const canFinishInTime = n <= currentVelocity * FLUSH_DURATION;
+				this.endVelocity = canFinishInTime ? currentVelocity : n / FLUSH_DURATION;
 			}
+			return this.endVelocity;
 		}
 		
-		// 核心公式：让缓冲区撑满 BUFFER_DURATION 秒
 		return n / BUFFER_DURATION;
 	}
 	

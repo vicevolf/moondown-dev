@@ -1,7 +1,7 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { convertToModelMessages, streamText, type UIMessage } from 'ai';
 
-const MODEL = 'z-ai/glm-4.5-air:free';
+const MODEL = 'xiaomi/mimo-v2-flash:free';
 
 export async function POST({ request }: { request: Request }) {
 	const { messages, apiKey }: { messages: UIMessage[]; apiKey: string } = await request.json();

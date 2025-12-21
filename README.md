@@ -92,7 +92,7 @@ npm run preview
 
 ## 默认模型
 
-当前使用免费模型: `z-ai/glm-4.5-air:free` (智谱 GLM-4.5 Air)
+当前使用免费模型: `xiaomi/mimo-v2-flash:free` (智谱 GLM-4.5 Air)
 
 ## 许可证
 
