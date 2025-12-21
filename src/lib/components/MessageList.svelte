@@ -5,10 +5,18 @@
 	let { messages, isStreaming = false }: { messages: UIMessage[]; isStreaming?: boolean } = $props();
 	let container: HTMLDivElement;
 
+	// 节流控制：使用 RAF 避免过度滚动
+	let scrollRaf: number | null = null;
+
 	// Auto scroll to bottom when new messages arrive
 	$effect(() => {
 		if (messages && container) {
-			container.scrollTop = container.scrollHeight;
+			if (scrollRaf === null) {
+				scrollRaf = requestAnimationFrame(() => {
+					container.scrollTop = container.scrollHeight;
+					scrollRaf = null;
+				});
+			}
 		}
 	});
 </script>

@@ -18,6 +18,11 @@
 	
 	const DEBUG = true;
 	
+	// 节流控制（真节流，不是防抖）
+	let parseTimer: ReturnType<typeof setTimeout> | null = null;
+	let pendingContent: string | null = null;
+	const PARSE_THROTTLE_MS = 40; // 40ms 节流，降低解析频率
+	
 	// 从 AST 提取块信息
 	function extractBlocks(tree: ReturnType<typeof fromMarkdown>, source: string, baseOffset: number) {
 		return tree.children.map(node => {
@@ -128,6 +133,11 @@
 		const md = content;
 		
 		if (!md) {
+			if (parseTimer) {
+				clearTimeout(parseTimer);
+				parseTimer = null;
+			}
+			pendingContent = null;
 			renderedBlocks = [];
 			cache = { lastContent: '', lastBlockStart: 0, stableBlocks: [], lastBlockContent: '', lastBlockHtml: '' };
 			return;
@@ -135,13 +145,37 @@
 		
 		if (md === cache.lastContent) return;
 		
-		const isAppend = md.startsWith(cache.lastContent) && cache.lastContent.length > 0;
+		// 真节流：如果有定时器在运行，只保存内容，等定时器触发
+		if (parseTimer !== null) {
+			pendingContent = md;
+			return;
+		}
 		
+		// 立即执行第一次解析
+		const isAppend = md.startsWith(cache.lastContent) && cache.lastContent.length > 0;
 		if (isAppend) {
 			incrementalParse(md);
 		} else {
 			fullParse(md);
 		}
+		
+		// 设置节流定时器
+		parseTimer = setTimeout(() => {
+			parseTimer = null;
+			
+			// 如果有待处理的内容，执行解析
+			if (pendingContent !== null && pendingContent !== cache.lastContent) {
+				const pendingMd = pendingContent;
+				pendingContent = null;
+				
+				const isAppend = pendingMd.startsWith(cache.lastContent) && cache.lastContent.length > 0;
+				if (isAppend) {
+					incrementalParse(pendingMd);
+				} else {
+					fullParse(pendingMd);
+				}
+			}
+		}, PARSE_THROTTLE_MS);
 	});
 </script>
 
