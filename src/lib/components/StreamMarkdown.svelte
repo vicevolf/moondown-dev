@@ -4,71 +4,121 @@
 
 	let { content, id }: { content: string; id: string } = $props();
 
-	// 使用AST解析器获取精确的块边界
-	function splitBlocks(md: string): string[] {
-		if (!md) return [];
-		
-		try {
-			const tree = fromMarkdown(md);
-			return tree.children.map(node => {
-				if (node.position) {
-					const start = node.position.start.offset ?? 0;
-					const end = node.position.end.offset ?? md.length;
-					return md.slice(start, end);
-				}
-				return '';
-			}).filter(Boolean);
-		} catch {
-			// 解析失败时返回整个内容作为单块
-			return [md];
-		}
-	}
-
-	// 缓存已渲染的块
-	let cache = $state<Map<string, string>>(new Map());
+	// 渲染结果
+	let renderedBlocks = $state<{ key: string; html: string }[]>([]);
 	
-	// 上次块数（用于减少日志输出）
-	let lastBlockCount = 0;
+	// 增量解析缓存（不触发响应式）
+	let cache = {
+		lastContent: '',
+		lastBlockStart: 0,     // 最后一个块在原文中的起始位置
+		stableHtmls: [] as string[]  // 已稳定块的 HTML
+	};
 	
-	// 当内容变化时，计算块和HTML
-	const blocks = $derived(splitBlocks(content));
-	
-	// 调试模式
 	const DEBUG = true;
 	
-	const renderedBlocks = $derived.by(() => {
-		const result: { key: string; html: string }[] = [];
-		const debugInfo: string[] = [];
-		
-		for (let i = 0; i < blocks.length; i++) {
-			const block = blocks[i];
-			const isLast = i === blocks.length - 1;
-			const cacheKey = `${id}-${i}-${block}`;
-			
-			// 最后一个块总是重新渲染（可能不完整）
-			// 之前的块使用缓存
-			if (!isLast && cache.has(cacheKey)) {
-				result.push({ key: `${id}-${i}`, html: cache.get(cacheKey)! });
-				debugInfo.push(`[${i}] ✓ cached`);
-			} else {
-				const html = micromark(block);
-				if (!isLast) {
-					cache.set(cacheKey, html);
-					debugInfo.push(`[${i}] → parsed & cached`);
-				} else {
-					debugInfo.push(`[${i}] ⟳ streaming (last)`);
-				}
-				result.push({ key: `${id}-${i}`, html });
+	// 从 AST 提取块信息
+	function extractBlocks(tree: ReturnType<typeof fromMarkdown>, source: string, baseOffset: number) {
+		return tree.children.map(node => {
+			if (node.position) {
+				const localStart = node.position.start.offset ?? 0;
+				const localEnd = node.position.end.offset ?? source.length;
+				return {
+					globalStart: baseOffset + localStart,
+					content: source.slice(localStart, localEnd)
+				};
 			}
+			return null;
+		}).filter(Boolean) as { globalStart: number; content: string }[];
+	}
+	
+	// 全量解析
+	function fullParse(md: string): string[] {
+		try {
+			const tree = fromMarkdown(md);
+			const blocks = extractBlocks(tree, md, 0);
+			
+			if (blocks.length === 0) {
+				cache = { lastContent: md, lastBlockStart: 0, stableHtmls: [] };
+				return [micromark(md)];
+			}
+			
+			// 缓存除最后一个块外的所有块
+			const stableHtmls = blocks.slice(0, -1).map(b => micromark(b.content));
+			const lastBlock = blocks[blocks.length - 1];
+			
+			cache = {
+				lastContent: md,
+				lastBlockStart: lastBlock.globalStart,
+				stableHtmls
+			};
+			
+			if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] full parse: ${blocks.length} blocks`, 'color: #e67e22');
+			
+			return [...stableHtmls, micromark(lastBlock.content)];
+		} catch {
+			return [micromark(md)];
+		}
+	}
+	
+	// 增量解析
+	function incrementalParse(md: string): string[] {
+		// 只解析从最后一个块开始的内容
+		const tailContent = md.slice(cache.lastBlockStart);
+		
+		try {
+			const tree = fromMarkdown(tailContent);
+			const tailBlocks = extractBlocks(tree, tailContent, cache.lastBlockStart);
+			
+			if (tailBlocks.length === 0) {
+				// 没有解析出块，用原始内容渲染
+				return [...cache.stableHtmls, micromark(tailContent)];
+			}
+			
+			if (tailBlocks.length > 1) {
+				// 有新的完整块产生，更新缓存
+				const newStableBlocks = tailBlocks.slice(0, -1);
+				cache.stableHtmls = [
+					...cache.stableHtmls,
+					...newStableBlocks.map(b => micromark(b.content))
+				];
+				
+				if (DEBUG) console.log(`%c[MD ${id.slice(0,6)}] +${newStableBlocks.length} stable`, 'color: #27ae60');
+			}
+			
+			const lastBlock = tailBlocks[tailBlocks.length - 1];
+			cache.lastBlockStart = lastBlock.globalStart;
+			cache.lastContent = md;
+			
+			return [...cache.stableHtmls, micromark(lastBlock.content)];
+		} catch {
+			// 解析失败，回退到全量
+			return fullParse(md);
+		}
+	}
+	
+	$effect(() => {
+		const md = content;
+		
+		if (!md) {
+			renderedBlocks = [];
+			cache = { lastContent: '', lastBlockStart: 0, stableHtmls: [] };
+			return;
 		}
 		
-		// 只在块数变化时输出日志
-		if (DEBUG && blocks.length > 0 && blocks.length !== lastBlockCount) {
-			lastBlockCount = blocks.length;
-			console.log(`%c[MD ${id.slice(0,6)}] blocks: ${blocks.length}`, 'color: #888');
+		// 内容没变，跳过
+		if (md === cache.lastContent) {
+			return;
 		}
 		
-		return result;
+		// 判断是否可以增量解析
+		const isAppend = md.startsWith(cache.lastContent) && cache.lastContent.length > 0;
+		
+		const htmls = isAppend ? incrementalParse(md) : fullParse(md);
+		
+		renderedBlocks = htmls.map((html, i) => ({
+			key: `${id}-${i}`,
+			html
+		}));
 	});
 </script>
 
