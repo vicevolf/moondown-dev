@@ -30,12 +30,8 @@
 	"dependencies": {
 		"@ai-sdk/svelte": "^3.0.115",
 		"@openrouter/ai-sdk-provider": "^1.4.1",
-		"@types/dompurify": "^3.0.5",
 		"ai": "^5.0.108",
 		"clsx": "^2.1.1",
-		"dompurify": "^3.3.1",
-		"micromark": "^4.0.2",
-		"micromark-extension-gfm-table": "^2.1.1",
 		"tailwind-merge": "^3.4.0"
 	}
 }

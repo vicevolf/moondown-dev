@@ -63,7 +63,7 @@
 	{/if}
 
 	<!-- Messages -->
-	<MessageList messages={chat.messages} isStreaming={chat.status !== 'ready'} />
+	<MessageList messages={chat.messages} />
 
 	<!-- Input -->
 	<MessageInput onSend={handleSendMessage} disabled={!canSend} />
