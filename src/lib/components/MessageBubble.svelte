@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { UIMessage } from 'ai';
-	import StreamMarkdown from './StreamMarkdown.svelte';
+	import BufferedText from './BufferedText.svelte';
 
-	let { message }: { message: UIMessage } = $props();
+	let { message, isStreaming = false }: { message: UIMessage; isStreaming?: boolean } = $props();
 
 	function getMessageText(msg: UIMessage): string {
 		return msg.parts
@@ -27,7 +27,7 @@
 			{#if isUser}
 				<span class="whitespace-pre-wrap">{displayText}</span>
 			{:else}
-				<StreamMarkdown content={displayText} id={message.id} />
+				<BufferedText content={displayText} id={message.id} {isStreaming} />
 			{/if}
 		</div>
 	</div>

@@ -2,7 +2,7 @@
 	import type { UIMessage } from 'ai';
 	import MessageBubble from './MessageBubble.svelte';
 
-	let { messages }: { messages: UIMessage[] } = $props();
+	let { messages, isStreaming = false }: { messages: UIMessage[]; isStreaming?: boolean } = $props();
 	let container: HTMLDivElement;
 
 	// Auto scroll to bottom when new messages arrive
@@ -27,8 +27,8 @@
 		</div>
 	{/if}
 
-	{#each messages as message (message.id)}
-		<MessageBubble {message} />
+	{#each messages as message, i (message.id)}
+		<MessageBubble {message} isStreaming={isStreaming && i === messages.length - 1} />
 	{/each}
 </div>
 

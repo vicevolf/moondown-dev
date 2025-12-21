@@ -27,6 +27,9 @@
 	// 缓存已渲染的块
 	let cache = $state<Map<string, string>>(new Map());
 	
+	// 上次块数（用于减少日志输出）
+	let lastBlockCount = 0;
+	
 	// 当内容变化时，计算块和HTML
 	const blocks = $derived(splitBlocks(content));
 	
@@ -59,8 +62,10 @@
 			}
 		}
 		
-		if (DEBUG && blocks.length > 0) {
-			console.log(`%c[MD ${id.slice(0,6)}] ${debugInfo.join(' | ')}`, 'color: #888');
+		// 只在块数变化时输出日志
+		if (DEBUG && blocks.length > 0 && blocks.length !== lastBlockCount) {
+			lastBlockCount = blocks.length;
+			console.log(`%c[MD ${id.slice(0,6)}] blocks: ${blocks.length}`, 'color: #888');
 		}
 		
 		return result;
