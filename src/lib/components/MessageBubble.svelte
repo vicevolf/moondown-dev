@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { UIMessage } from 'ai';
+	import StreamMarkdown from './StreamMarkdown.svelte';
 
 	let { message }: { message: UIMessage } = $props();
 
@@ -22,8 +23,12 @@
 			{isUser ? '👤 你' : '✨ AI'}
 		</div>
 		
-		<div class="whitespace-pre-wrap break-words leading-relaxed">
-			{displayText}
+		<div class="break-words leading-relaxed">
+			{#if isUser}
+				<span class="whitespace-pre-wrap">{displayText}</span>
+			{:else}
+				<StreamMarkdown content={displayText} id={message.id} />
+			{/if}
 		</div>
 	</div>
 </div>
