@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { UIMessage } from "ai";
 	import BufferedText from "./BufferedText.svelte";
-	import BufferedTextMoondown from "./BufferedTextMoondown.svelte";
+	import BufferedTextMoondown from "$lib/moondown/BufferedTextMoondown.svelte";
 	import { useMoondown } from "$lib/stores";
 
 	let {

@@ -113,7 +113,7 @@ export class MoondownEngine {
         }
 
         // 复用数组：只在有pending时拼接，否则直接返回stable
-        this.cachedResult = pendingBlocks.length > 0 
+        this.cachedResult = pendingBlocks.length > 0
             ? [...this.stableBlocks, ...pendingBlocks]
             : this.stableBlocks;
         return this.cachedResult;

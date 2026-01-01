@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy } from "svelte";
-    import { MoondownEngine, type RenderBlock } from "$lib/moondownEngine";
+    import { MoondownEngine, type RenderBlock } from "./engine";
     import MoondownRenderer from "./MoondownRenderer.svelte";
 
     interface Props {
@@ -58,16 +58,12 @@
             blocks = engine.process(content);
         }
 
-        // 释放引擎引用
+        // 释放引擎引用（AST 节点保留，因为组件仍需渲染）
         engine = null;
-
-        // 延迟释放 AST 节点引用（DOM 已渲染完成，不再需要）
-        requestIdleCallback(() => {
-            for (const block of blocks) {
-                (block as { node: unknown }).node = null!;
-            }
-            console.log("%c[🌙 Moondown] AST 节点已释放", "color: #27ae60");
-        });
+        console.log(
+            "%c[🌙 Moondown] 引擎已释放，AST 节点保留用于渲染",
+            "color: #27ae60",
+        );
     }
 
     // 节流解析
