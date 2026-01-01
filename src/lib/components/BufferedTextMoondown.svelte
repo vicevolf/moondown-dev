@@ -13,6 +13,7 @@
     let displayedText = $state("");
     let bufferSize = $state(0);
     let velocity = $state(0);
+    let isBufferComplete = $state(false); // 缓冲区是否完全输出完毕
 
     // 追踪上次处理的内容长度
     let lastProcessedLength = 0;
@@ -26,6 +27,15 @@
             displayedText = state.displayedText;
             bufferSize = state.bufferedText.length;
             velocity = state.velocity;
+
+            // 当缓冲区已结束且无剩余内容时，标记为完成
+            if (
+                state.isEnded &&
+                state.bufferedText.length === 0 &&
+                !state.isRunning
+            ) {
+                isBufferComplete = true;
+            }
         });
 
         // 初始内容推入缓冲区
@@ -78,7 +88,8 @@
         <div>Buffer: {bufferSize} chars</div>
         <div>Speed: {velocity.toFixed(1)} c/s</div>
         <div>Displayed: {displayedText.length} / {content.length}</div>
+        <div>Complete: {isBufferComplete ? "✅" : "⏳"}</div>
     </div>
 {/if}
 
-<Moondown content={displayedText} />
+<Moondown content={displayedText} isStreaming={!isBufferComplete} />

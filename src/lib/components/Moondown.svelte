@@ -1,16 +1,22 @@
 <script lang="ts">
+    import { onDestroy } from "svelte";
     import { MoondownEngine, type RenderBlock } from "$lib/moondownEngine";
     import MoondownRenderer from "./MoondownRenderer.svelte";
 
     interface Props {
         content: string;
         class?: string;
+        isStreaming?: boolean;
     }
 
-    let { content = "", class: className = "" }: Props = $props();
+    let {
+        content = "",
+        class: className = "",
+        isStreaming = true,
+    }: Props = $props();
 
     // 实例化引擎（组件级单例）
-    const engine = new MoondownEngine();
+    let engine: MoondownEngine | null = new MoondownEngine();
 
     // 节流控制
     const PARSE_THROTTLE_MS = 40;
@@ -21,24 +27,59 @@
     // 渲染结果
     let blocks = $state<RenderBlock[]>([]);
 
+    // 是否已释放资源
+    let hasFinalized = false;
+
     // 实际解析函数
     function doParse(text: string) {
-        if (text === lastParsedContent) return;
+        if (!engine || text === lastParsedContent) return;
         lastParsedContent = text;
         blocks = engine.process(text);
+    }
+
+    // 释放资源
+    function cleanup() {
+        if (parseTimer) {
+            clearTimeout(parseTimer);
+            parseTimer = null;
+        }
+        pendingContent = null;
+    }
+
+    // 完全释放引擎资源（流结束后调用）
+    function finalize() {
+        if (hasFinalized) return;
+        hasFinalized = true;
+
+        cleanup();
+
+        // 最后一次解析确保内容完整
+        if (engine && content !== lastParsedContent) {
+            blocks = engine.process(content);
+        }
+
+        // 释放引擎引用
+        engine = null;
+
+        // 延迟释放 AST 节点引用（DOM 已渲染完成，不再需要）
+        requestIdleCallback(() => {
+            for (const block of blocks) {
+                (block as { node: unknown }).node = null!;
+            }
+            console.log("%c[🌙 Moondown] AST 节点已释放", "color: #27ae60");
+        });
     }
 
     // 节流解析
     $effect(() => {
         const text = content;
 
+        // 如果已释放，跳过
+        if (hasFinalized || !engine) return;
+
         // 空内容直接重置
         if (!text) {
-            if (parseTimer) {
-                clearTimeout(parseTimer);
-                parseTimer = null;
-            }
-            pendingContent = null;
+            cleanup();
             lastParsedContent = "";
             blocks = [];
             engine.reset();
@@ -68,6 +109,19 @@
                 doParse(pending);
             }
         }, PARSE_THROTTLE_MS);
+    });
+
+    // 监听流结束
+    $effect(() => {
+        if (!isStreaming && !hasFinalized) {
+            finalize();
+        }
+    });
+
+    // 组件销毁时清理
+    onDestroy(() => {
+        cleanup();
+        engine = null;
     });
 </script>
 

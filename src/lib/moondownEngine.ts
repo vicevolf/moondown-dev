@@ -21,6 +21,10 @@ export class MoondownEngine {
     private instanceId = Math.random().toString(36).slice(2);
     private currentPendingId = `moondown-pending-${this.instanceId}-${Date.now()}`;
 
+    // 缓存：避免重复计算和数组创建
+    private lastInputLength = 0;
+    private cachedResult: RenderBlock[] = [];
+
     private parseOptions = {
         extensions: [gfm()],
         mdastExtensions: [gfmFromMarkdown()]
@@ -38,6 +42,12 @@ export class MoondownEngine {
      * @returns 渲染块数组
      */
     process(fullText: string): RenderBlock[] {
+        // 快速路径：内容无变化直接返回缓存
+        if (fullText.length === this.lastInputLength) {
+            return this.cachedResult;
+        }
+        this.lastInputLength = fullText.length;
+
         // 1. 重置检测：如果新文本比游标位置短，说明内容被重置
         if (fullText.length < this.cursor) {
             this.log('⚠️ 检测到内容重置，重新初始化引擎', '#e74c3c');
@@ -47,7 +57,8 @@ export class MoondownEngine {
         // 2. 获取增量切片（从游标位置开始）
         const textToParse = fullText.slice(this.cursor);
         if (!textToParse) {
-            return [...this.stableBlocks];
+            this.cachedResult = this.stableBlocks;
+            return this.cachedResult;
         }
 
         // 3. 局部解析增量文本
@@ -101,7 +112,11 @@ export class MoondownEngine {
             this.log(`⏳ Pending 块: ${pendingNode.type} | 输出: ${this.stableBlocks.length} stable + 1 pending`, '#9b59b6');
         }
 
-        return [...this.stableBlocks, ...pendingBlocks];
+        // 复用数组：只在有pending时拼接，否则直接返回stable
+        this.cachedResult = pendingBlocks.length > 0 
+            ? [...this.stableBlocks, ...pendingBlocks]
+            : this.stableBlocks;
+        return this.cachedResult;
     }
 
     /**
@@ -114,5 +129,7 @@ export class MoondownEngine {
         this.blockCounter = 0;
         this.instanceId = Math.random().toString(36).slice(2);
         this.currentPendingId = `moondown-pending-${this.instanceId}-${Date.now()}`;
+        this.lastInputLength = 0;
+        this.cachedResult = [];
     }
 }
