@@ -1,6 +1,9 @@
 /**
  * MoonGravity - 物理文本缓冲区
  * 核心逻辑：让缓冲区内容撑满 BUFFER_DURATION 秒输出
+ * 
+ * 新架构：输出 revealIndex（字符索引）而非切片后的文本
+ *        支持预渲染 + 渐显模式
  */
 
 /** 缓冲区目标持续时间（秒） */
@@ -10,11 +13,20 @@ const BUFFER_DURATION = 3.0;
 const FLUSH_DURATION = 2.0;
 
 export interface BufferState {
-    displayedText: string;
-    bufferedText: string;
+    /** 当前应显示到第几个字符（0-indexed, exclusive） */
+    revealIndex: number;
+    /** 完整内容长度 */
+    totalLength: number;
+    /** 待显示的缓冲区长度 */
+    bufferSize: number;
+    /** 当前速度 (字符/秒) */
     velocity: number;
+    /** 是否正在运行 */
     isRunning: boolean;
+    /** 网络流是否已结束 */
     isEnded: boolean;
+    /** 缓冲区是否已完全输出 */
+    isComplete: boolean;
 }
 
 export type BufferCallback = (state: BufferState) => void;
@@ -46,8 +58,10 @@ class SpringPhysics {
 }
 
 export class TextBuffer {
-    private buffer: string = '';
-    private displayed: string = '';
+    /** 完整内容（网络接收的全部文本） */
+    private fullContent: string = '';
+    /** 已显示到的字符索引 */
+    private revealIndex: number = 0;
     private isRunning: boolean = false;
     private isEnded: boolean = false;
     private endVelocity: number | null = null;
@@ -63,8 +77,18 @@ export class TextBuffer {
         this.onUpdate = onUpdate;
     }
 
+    /** 获取完整内容（供 Moondown 解析） */
+    getFullContent(): string {
+        return this.fullContent;
+    }
+
+    /** 获取当前显示索引 */
+    getRevealIndex(): number {
+        return this.revealIndex;
+    }
+
     push(text: string): void {
-        this.buffer += text;
+        this.fullContent += text;
         if (!this.isRunning) {
             this.start();
         }
@@ -76,8 +100,8 @@ export class TextBuffer {
 
     reset(): void {
         this.stop();
-        this.buffer = '';
-        this.displayed = '';
+        this.fullContent = '';
+        this.revealIndex = 0;
         this.physics.reset();
         this.charAccumulator = 0;
         this.isEnded = false;
@@ -87,22 +111,22 @@ export class TextBuffer {
 
     /**
      * 计算目标速度
-     * 核心逻辑：缓冲区字符数 / 目标持续时间
+     * 核心逻辑：待显示字符数 / 目标持续时间
      */
     private getTargetVelocity(): number {
-        const n = this.buffer.length;
+        const remaining = this.fullContent.length - this.revealIndex;
 
         if (this.isEnded) {
             // 首次进入结束状态，锁定目标速度
             if (this.endVelocity === null) {
                 const currentVelocity = this.physics.velocity;
-                const canFinishInTime = n <= currentVelocity * FLUSH_DURATION;
-                this.endVelocity = canFinishInTime ? currentVelocity : n / FLUSH_DURATION;
+                const canFinishInTime = remaining <= currentVelocity * FLUSH_DURATION;
+                this.endVelocity = canFinishInTime ? currentVelocity : remaining / FLUSH_DURATION;
             }
             return this.endVelocity;
         }
 
-        return n / BUFFER_DURATION;
+        return remaining / BUFFER_DURATION;
     }
 
     private start(): void {
@@ -131,20 +155,20 @@ export class TextBuffer {
         const targetVelocity = this.getTargetVelocity();
         this.physics.update(targetVelocity, dt);
 
-        // 输出字符
+        // 更新 revealIndex
         this.charAccumulator += this.physics.velocity * dt;
-        const charsToShow = Math.floor(this.charAccumulator);
-        this.charAccumulator -= charsToShow;
+        const charsToReveal = Math.floor(this.charAccumulator);
+        this.charAccumulator -= charsToReveal;
 
-        if (charsToShow > 0 && this.buffer.length > 0) {
-            const actualChars = Math.min(charsToShow, this.buffer.length);
-            this.displayed += this.buffer.slice(0, actualChars);
-            this.buffer = this.buffer.slice(actualChars);
+        const remaining = this.fullContent.length - this.revealIndex;
+        if (charsToReveal > 0 && remaining > 0) {
+            const actualChars = Math.min(charsToReveal, remaining);
+            this.revealIndex += actualChars;
             this.notifyUpdate();
         }
 
         // 继续或停止
-        if (this.buffer.length === 0 && this.isEnded) {
+        if (this.revealIndex >= this.fullContent.length && this.isEnded) {
             this.stop();
             this.notifyUpdate(); // 通知订阅者缓冲区已完成
         } else {
@@ -153,12 +177,17 @@ export class TextBuffer {
     };
 
     private notifyUpdate(): void {
+        const remaining = this.fullContent.length - this.revealIndex;
+        const isComplete = this.isEnded && remaining === 0 && !this.isRunning;
+
         this.onUpdate({
-            displayedText: this.displayed,
-            bufferedText: this.buffer,
+            revealIndex: this.revealIndex,
+            totalLength: this.fullContent.length,
+            bufferSize: remaining,
             velocity: this.physics.velocity,
             isRunning: this.isRunning,
-            isEnded: this.isEnded
+            isEnded: this.isEnded,
+            isComplete
         });
     }
 

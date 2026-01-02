@@ -1,14 +1,32 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { gfm } from 'micromark-extension-gfm';
-import type { RootContent } from 'mdast';
+import type { RootContent, Parent, Text, InlineCode, Code } from 'mdast';
 
 export type BlockStatus = 'stable' | 'pending';
+
+/**
+ * 字符范围信息
+ * 用于追踪 AST 节点对应的可见字符位置
+ */
+export interface RangeInfo {
+    charStart: number;  // 可见字符起始位置 (inclusive)
+    charEnd: number;    // 可见字符结束位置 (exclusive)
+}
+
+/**
+ * 带范围信息的 AST 节点
+ * 通过 __range 属性扩展原有节点
+ */
+export type RangedNode<T = RootContent> = T & {
+    __range?: RangeInfo;
+};
 
 export interface RenderBlock {
     id: string;
     status: BlockStatus;
-    node: RootContent;
+    node: RangedNode<RootContent>;
+    range: RangeInfo;  // 块级字符范围
 }
 
 // 调试开关：开发模式自动启用
@@ -26,6 +44,9 @@ export class MoondownEngine {
     private cachedResult: RenderBlock[] = [];
     private lastStableCount = 0; // 追踪上次稳定块数量，用于结构共享
 
+    // 字符偏移追踪：每个稳定块消费的字符数
+    private stableCharOffset = 0;
+
     private parseOptions = {
         extensions: [gfm()],
         mdastExtensions: [gfmFromMarkdown()]
@@ -35,6 +56,63 @@ export class MoondownEngine {
         if (DEBUG) {
             console.log(`%c[🌙 Moondown ${this.instanceId.slice(0, 4)}] ${message}`, `color: ${color}`);
         }
+    }
+
+    /**
+     * 递归标注 AST 节点的字符范围
+     * @param node AST 节点
+     * @param offset 当前字符偏移量
+     * @returns 处理后的字符偏移量
+     */
+    private annotateRanges(node: RangedNode, offset: number): number {
+        const startOffset = offset;
+
+        // 文本节点：直接计算字符长度
+        if (node.type === 'text') {
+            const textNode = node as RangedNode<Text>;
+            const length = textNode.value.length;
+            textNode.__range = { charStart: startOffset, charEnd: startOffset + length };
+            return startOffset + length;
+        }
+
+        // 行内代码：value 就是可见字符
+        if (node.type === 'inlineCode') {
+            const codeNode = node as RangedNode<InlineCode>;
+            const length = codeNode.value.length;
+            codeNode.__range = { charStart: startOffset, charEnd: startOffset + length };
+            return startOffset + length;
+        }
+
+        // 代码块：value 是代码内容
+        if (node.type === 'code') {
+            const codeNode = node as RangedNode<Code>;
+            const length = codeNode.value.length;
+            codeNode.__range = { charStart: startOffset, charEnd: startOffset + length };
+            return startOffset + length;
+        }
+
+        // 分隔线、图片等无文本内容的节点
+        if (node.type === 'thematicBreak' || node.type === 'image' || node.type === 'break') {
+            node.__range = { charStart: startOffset, charEnd: startOffset };
+            return startOffset;
+        }
+
+        // 容器节点：递归处理子节点
+        if ('children' in node) {
+            const parentNode = node as RangedNode<Parent>;
+            let currentOffset = startOffset;
+
+            for (const child of parentNode.children) {
+                currentOffset = this.annotateRanges(child as RangedNode, currentOffset);
+            }
+
+            parentNode.__range = { charStart: startOffset, charEnd: currentOffset };
+            return currentOffset;
+        }
+
+        // 兜底：未知节点类型
+        node.__range = { charStart: startOffset, charEnd: startOffset };
+        return startOffset;
     }
 
     /**
@@ -79,7 +157,7 @@ export class MoondownEngine {
     /**
      * 增量处理函数
      * @param fullText 完整的流式输入文本
-     * @returns 渲染块数组
+     * @returns 渲染块数组（带字符范围标注）
      */
     process(fullText: string): RenderBlock[] {
         // 快速路径：内容无变化直接返回缓存
@@ -118,16 +196,23 @@ export class MoondownEngine {
                 const consumedLength = lastStableNode.position.end.offset;
 
                 if (consumedLength > 0) {
-                    // 归档到 Stable 区
+                    // 归档到 Stable 区（带范围标注）
                     for (const node of newStableNodes) {
+                        const rangedNode = node as RangedNode;
+                        const blockCharStart = this.stableCharOffset;
+                        const blockCharEnd = this.annotateRanges(rangedNode, blockCharStart);
+
                         this.stableBlocks.push({
                             id: `moondown-stable-${this.instanceId}-${++this.blockCounter}`,
                             status: 'stable',
-                            node
+                            node: rangedNode,
+                            range: { charStart: blockCharStart, charEnd: blockCharEnd }
                         });
+
+                        this.stableCharOffset = blockCharEnd;
                     }
 
-                    this.log(`✅ 提交 ${newStableNodes.length} 个稳定块 (${newStableNodes.map(n => n.type).join(', ')}) | 总稳定块: ${this.stableBlocks.length}`, '#27ae60');
+                    this.log(`✅ 提交 ${newStableNodes.length} 个稳定块 (${newStableNodes.map(n => n.type).join(', ')}) | 总稳定块: ${this.stableBlocks.length} | 字符范围: 0-${this.stableCharOffset}`, '#27ae60');
 
                     // 推进游标
                     const oldCursor = this.cursor;
@@ -140,16 +225,20 @@ export class MoondownEngine {
             }
         }
 
-        // 5. 组装 Pending 块（最后一个未闭合的节点）
+        // 5. 组装 Pending 块（最后一个未闭合的节点，带范围标注）
         const pendingBlocks: RenderBlock[] = [];
         if (children.length > 0) {
-            const pendingNode = children[children.length - 1];
+            const pendingNode = children[children.length - 1] as RangedNode;
+            const blockCharStart = this.stableCharOffset;
+            const blockCharEnd = this.annotateRanges(pendingNode, blockCharStart);
+
             pendingBlocks.push({
                 id: this.currentPendingId,
                 status: 'pending',
-                node: pendingNode
+                node: pendingNode,
+                range: { charStart: blockCharStart, charEnd: blockCharEnd }
             });
-            this.log(`⏳ Pending 块: ${pendingNode.type} | 输出: ${this.stableBlocks.length} stable + 1 pending`, '#9b59b6');
+            this.log(`⏳ Pending 块: ${pendingNode.type} | 输出: ${this.stableBlocks.length} stable + 1 pending | 范围: ${blockCharStart}-${blockCharEnd}`, '#9b59b6');
         }
 
         // 结构共享：智能合并，复用未变化块的引用
@@ -173,5 +262,6 @@ export class MoondownEngine {
         this.lastInputLength = 0;
         this.cachedResult = [];
         this.lastStableCount = 0;
+        this.stableCharOffset = 0;
     }
 }

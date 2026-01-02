@@ -9,7 +9,8 @@
     }: { content: string; isStreaming?: boolean } = $props();
 
     // 缓冲区状态
-    let displayedText = $state("");
+    let fullContent = $state("");
+    let revealIndex = $state(0);
     let bufferSize = $state(0);
     let velocity = $state(0);
     let isBufferComplete = $state(false);
@@ -23,17 +24,11 @@
 
     onMount(() => {
         buffer = new TextBuffer((state: BufferState) => {
-            displayedText = state.displayedText;
-            bufferSize = state.bufferedText.length;
+            revealIndex = state.revealIndex;
+            bufferSize = state.bufferSize;
             velocity = state.velocity;
-
-            if (
-                state.isEnded &&
-                state.bufferedText.length === 0 &&
-                !state.isRunning
-            ) {
-                isBufferComplete = true;
-            }
+            fullContent = buffer?.getFullContent() ?? "";
+            isBufferComplete = state.isComplete;
         });
 
         if (content) {
@@ -59,6 +54,8 @@
             const newContent = content.slice(lastProcessedLength);
             buffer.push(newContent);
             lastProcessedLength = content.length;
+            // 同步更新 fullContent
+            fullContent = buffer.getFullContent();
         }
     });
 
@@ -96,9 +93,9 @@
         </div>
         <div>Buffer: {bufferSize} chars</div>
         <div>Speed: {velocity.toFixed(1)} c/s</div>
-        <div>Displayed: {displayedText.length} / {content.length}</div>
+        <div>Reveal: {revealIndex} / {fullContent.length}</div>
         <div>Complete: {isBufferComplete ? "✅" : "⏳"}</div>
     </div>
 {/if}
 
-<Moondown content={displayedText} isStreaming={!isBufferComplete} />
+<Moondown content={fullContent} {revealIndex} isStreaming={!isBufferComplete} />
