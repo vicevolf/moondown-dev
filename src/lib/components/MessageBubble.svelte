@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { UIMessage } from "ai";
-	import BufferedTextMoondown from "$lib/moondown/BufferedTextMoondown.svelte";
+	import MoonGravity from "$lib/moondown/MoonGravity.svelte";
 
 	let {
 		message,
@@ -35,7 +35,7 @@
 			{#if isUser}
 				<span class="whitespace-pre-wrap">{displayText}</span>
 			{:else}
-				<BufferedTextMoondown
+				<MoonGravity
 					content={displayText}
 					id={message.id}
 					{isStreaming}

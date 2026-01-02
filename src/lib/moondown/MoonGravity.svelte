@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
-    import { TextBuffer, type BufferState } from "$lib/textBuffer";
+    import { TextBuffer, type BufferState } from "./moongravity";
     import Moondown from "./Moondown.svelte";
 
     let {
@@ -13,7 +13,7 @@
     let displayedText = $state("");
     let bufferSize = $state(0);
     let velocity = $state(0);
-    let isBufferComplete = $state(false); // 缓冲区是否完全输出完毕
+    let isBufferComplete = $state(false);
 
     // 追踪上次处理的内容长度
     let lastProcessedLength = 0;
@@ -28,7 +28,6 @@
             bufferSize = state.bufferedText.length;
             velocity = state.velocity;
 
-            // 当缓冲区已结束且无剩余内容时，标记为完成
             if (
                 state.isEnded &&
                 state.bufferedText.length === 0 &&
@@ -38,13 +37,11 @@
             }
         });
 
-        // 初始内容推入缓冲区
         if (content) {
             buffer.push(content);
             lastProcessedLength = content.length;
         }
 
-        // 如果初始就不是流式，直接结束
         if (!isStreaming) {
             buffer.end();
             hasEnded = true;
@@ -84,7 +81,7 @@
     <div
         class="fixed top-2 right-2 bg-black/80 text-white text-xs p-2 rounded font-mono z-50"
     >
-        <div class="text-emerald-400 font-bold mb-1">🌙 Moondown</div>
+        <div class="text-emerald-400 font-bold mb-1">🌙 MoonGravity</div>
         <div>Buffer: {bufferSize} chars</div>
         <div>Speed: {velocity.toFixed(1)} c/s</div>
         <div>Displayed: {displayedText.length} / {content.length}</div>
