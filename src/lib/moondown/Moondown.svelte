@@ -3,6 +3,12 @@
     import { MoondownEngine, type RenderBlock } from "./engine";
     import MoondownRenderer from "./MoondownRenderer.svelte";
 
+    // 导入 Moondown 排版系统 (缺省样式)
+    import "./moondown.css";
+
+    // 可选：增强强调效果 (加粗荧光笔背景 + 删除线主题色)
+    import "./moondown-emphasis.css";
+
     interface Props {
         content: string;
         class?: string;
@@ -121,7 +127,7 @@
     });
 </script>
 
-<div class={`moondown-root w-full ${className}`}>
+<div class={`moondown-root ${className}`}>
     {#each blocks as block (block.id)}
         <div class="moondown-block" data-status={block.status}>
             <MoondownRenderer node={block.node} />

@@ -1,0 +1,538 @@
+/**
+ * Moondown Typography System
+ * 基于 2025 中英文 Web 排版工程指南 v3.0
+ * 
+ * 核心理念：原生渲染 | 零布局偏移 | 视觉疗愈
+ * 
+ * 命名规范：所有元素使用 .moondown-* 前缀
+ * 覆盖方式：用户可通过 .moondown-root.custom 或 .custom .moondown-* 覆盖
+ */
+
+/* =========================================
+   1. Design Tokens (CSS 变量)
+   ========================================= */
+
+.moondown-root {
+    /* -----------------------------------------
+     1.1 字体栈 (The Golden Stack) - 原生优先
+     ----------------------------------------- */
+    --md-font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial,
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+        "WenQuanYi Micro Hei", sans-serif;
+
+    --md-font-serif: "Charter", "Bitstream Charter", "Sitka Text",
+        "Cambria", "Merriweather", "Georgia",
+        "Songti SC", "SimSun", serif;
+
+    --md-font-mono: "Fira Code", "Cascadia Code", "JetBrains Mono",
+        "Menlo", "Monaco", "Consolas",
+        "Liberation Mono", "Courier New", monospace;
+
+    /* -----------------------------------------
+     1.2 物理度量 (Fluid Metrics)
+     ----------------------------------------- */
+    --md-leading-body: 1.75;
+    --md-leading-tight: 1.3;
+    --md-leading-code: 1.5;
+
+    --md-text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+    --md-text-h1: clamp(1.75rem, 1.4rem + 1.5vw, 2.25rem);
+    --md-text-h2: clamp(1.375rem, 1.2rem + 0.75vw, 1.75rem);
+    --md-text-h3: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+    --md-text-h4: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+    --md-text-h5: clamp(0.875rem, 0.85rem + 0.15vw, 1rem);
+    --md-text-h6: clamp(0.75rem, 0.72rem + 0.15vw, 0.875rem);
+    --md-text-code: 0.875em;
+
+    /* -----------------------------------------
+     1.3 主题色系统 (Theme Color System)
+     用户可通过覆盖 --md-theme-* 变量自定义主题
+     ----------------------------------------- */
+
+    /* === 主题色 (用户可自定义) === */
+    --md-theme-primary: #2563EB;
+    /* 主色调 - 链接、强调 */
+    --md-theme-primary-hover: #1D4ED8;
+    /* 主色调悬停 */
+    --md-theme-secondary: #6366F1;
+    /* 次要色 - 可选装饰 */
+
+    /* === 语义色 (基于主题色派生) === */
+    --md-color-accent: var(--md-theme-primary);
+    --md-color-accent-hover: var(--md-theme-primary-hover);
+
+    /* === 中性色板 (APCA 对比度优化) === */
+    --md-color-bg: transparent;
+    --md-color-surface: #FFFFFF;
+    --md-color-text: #1F2937;
+    /* gray-800 */
+    --md-color-text-secondary: #4B5563;
+    /* gray-600 */
+    --md-color-text-muted: #9CA3AF;
+    /* gray-400 */
+    --md-color-border: #E5E7EB;
+    /* gray-200 */
+    --md-color-border-strong: #D1D5DB;
+    /* gray-300 */
+
+    /* === 功能色 === */
+    --md-color-code-bg: #F3F4F6;
+    /* gray-100 */
+    --md-color-code-text: #1F2937;
+    --md-color-inline-code-text: #BE185D;
+    /* pink-700 */
+    --md-color-inline-code-bg: #FDF2F8;
+    /* pink-50 */
+    --md-color-blockquote-border: var(--md-color-border-strong);
+    --md-color-blockquote-bg: #F9FAFB;
+    /* gray-50 */
+
+    /* === 间距与圆角 === */
+    --md-spacing-block: 1rem;
+    --md-spacing-inline: 0.25em;
+    --md-radius: 8px;
+    --md-radius-sm: 4px;
+}
+
+/* -----------------------------------------
+   深色模式：视觉疗愈配色
+   ----------------------------------------- */
+@media (prefers-color-scheme: dark) {
+    .moondown-root {
+        /* 主题色 - 深色模式适配 */
+        --md-theme-primary: #60A5FA;
+        /* blue-400 */
+        --md-theme-primary-hover: #93C5FD;
+        /* blue-300 */
+        --md-theme-secondary: #A5B4FC;
+        /* indigo-300 */
+
+        /* 中性色板 - 深色模式 */
+        --md-color-surface: #1F2937;
+        /* gray-800 */
+        --md-color-text: #F3F4F6;
+        /* gray-100 - 避免纯白 */
+        --md-color-text-secondary: #D1D5DB;
+        /* gray-300 */
+        --md-color-text-muted: #6B7280;
+        /* gray-500 */
+        --md-color-border: #374151;
+        /* gray-700 */
+        --md-color-border-strong: #4B5563;
+        /* gray-600 */
+
+        /* 功能色 - 深色模式 */
+        --md-color-code-bg: #111827;
+        /* gray-900 */
+        --md-color-code-text: #F3F4F6;
+        --md-color-inline-code-text: #F472B6;
+        /* pink-400 */
+        --md-color-inline-code-bg: rgba(244, 114, 182, 0.1);
+        --md-color-blockquote-border: #4B5563;
+        --md-color-blockquote-bg: rgba(31, 41, 55, 0.5);
+    }
+}
+
+
+/* =========================================
+   2. 根容器 (Root Container)
+   ========================================= */
+
+.moondown-root {
+    /* 布局 */
+    width: 100%;
+
+    /* 基础排版 */
+    font-family: var(--md-font-sans);
+    font-size: var(--md-text-base);
+    line-height: var(--md-leading-body);
+    color: var(--md-color-text);
+
+    /* 渲染优化 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+
+    /* 基础词断 */
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+
+/* =========================================
+   3. 微观排版与渐进增强
+   ========================================= */
+
+@supports (text-autospace: ideograph-alpha) {
+    .moondown-root {
+        text-autospace: ideograph-alpha ideograph-numeric;
+    }
+}
+
+@supports (text-spacing-trim: trim-start) {
+
+    .moondown-root .moondown-heading,
+    .moondown-root .moondown-paragraph,
+    .moondown-root .moondown-list-item {
+        text-spacing-trim: trim-start;
+    }
+}
+
+@supports (text-wrap: pretty) {
+    .moondown-root .moondown-paragraph {
+        text-wrap: pretty;
+    }
+}
+
+@supports (text-wrap: balance) {
+    .moondown-root .moondown-heading {
+        text-wrap: balance;
+    }
+}
+
+
+/* =========================================
+   4. 标题系统 (Headings)
+   使用 .moondown-root 提高优先级
+   ========================================= */
+
+.moondown-root .moondown-heading {
+    font-weight: 700;
+    line-height: var(--md-leading-tight);
+    color: var(--md-color-text);
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+}
+
+.moondown-root .moondown-block:first-child .moondown-heading {
+    margin-top: 0;
+}
+
+.moondown-root h1.moondown-heading {
+    font-size: var(--md-text-h1);
+    border-bottom: 1px solid var(--md-color-border);
+    padding-bottom: 0.3em;
+}
+
+.moondown-root h2.moondown-heading {
+    font-size: var(--md-text-h2);
+    border-bottom: 1px solid var(--md-color-border);
+    padding-bottom: 0.25em;
+}
+
+.moondown-root h3.moondown-heading {
+    font-size: var(--md-text-h3);
+}
+
+.moondown-root h4.moondown-heading {
+    font-size: var(--md-text-h4);
+}
+
+.moondown-root h5.moondown-heading {
+    font-size: var(--md-text-h5);
+}
+
+.moondown-root h6.moondown-heading {
+    font-size: var(--md-text-h6);
+    color: var(--md-color-text-secondary);
+}
+
+
+/* =========================================
+   5. 段落与文本 (Paragraph & Text)
+   ========================================= */
+
+.moondown-root .moondown-paragraph {
+    margin-bottom: var(--md-spacing-block);
+    line-height: var(--md-leading-body);
+}
+
+.moondown-root .moondown-block:last-child .moondown-paragraph {
+    margin-bottom: 0;
+}
+
+.moondown-root .moondown-strong {
+    font-weight: 600;
+}
+
+.moondown-root .moondown-emphasis {
+    font-style: italic;
+}
+
+.moondown-root .moondown-delete {
+    text-decoration: line-through;
+    text-decoration-color: var(--md-color-text-muted);
+    text-decoration-thickness: 1.5px;
+    color: var(--md-color-text-secondary);
+    opacity: 0.85;
+}
+
+
+/* =========================================
+   6. 代码样式 (Code)
+   ========================================= */
+
+/* 内联代码 */
+.moondown-root .moondown-inline-code {
+    font-family: var(--md-font-mono);
+    font-size: var(--md-text-code);
+    background-color: var(--md-color-inline-code-bg);
+    color: var(--md-color-inline-code-text);
+    padding: 0.15em 0.4em;
+    margin: 0 var(--md-spacing-inline);
+    border-radius: var(--md-radius-sm);
+    font-variant-ligatures: contextual;
+}
+
+/* 代码块容器 */
+.moondown-root .moondown-code {
+    margin: var(--md-spacing-block) 0;
+    border-radius: var(--md-radius);
+    overflow: hidden;
+    border: 1px solid var(--md-color-border);
+}
+
+/* 语言标签 */
+.moondown-root .moondown-code-lang {
+    padding: 0.5rem 1rem;
+    background-color: var(--md-color-code-bg);
+    border-bottom: 1px solid var(--md-color-border);
+    font-family: var(--md-font-mono);
+    font-size: 0.75rem;
+    color: var(--md-color-text-secondary);
+    user-select: none;
+}
+
+/* 代码块内容 */
+.moondown-root .moondown-code pre {
+    font-family: var(--md-font-mono);
+    font-size: var(--md-text-code);
+    line-height: var(--md-leading-code);
+    background-color: var(--md-color-code-bg);
+    color: var(--md-color-code-text);
+    padding: 1rem;
+    margin: 0;
+    overflow-x: auto;
+    tab-size: 2;
+}
+
+.moondown-root .moondown-code pre code {
+    background: none;
+    padding: 0;
+    margin: 0;
+    font-size: inherit;
+    color: inherit;
+    border-radius: 0;
+}
+
+
+/* =========================================
+   7. 列表样式 (Lists)
+   ========================================= */
+
+.moondown-root .moondown-list {
+    margin-bottom: var(--md-spacing-block);
+    padding-left: 1.5em;
+}
+
+.moondown-root .moondown-list.ordered {
+    list-style-type: decimal;
+}
+
+.moondown-root .moondown-list.unordered {
+    list-style-type: disc;
+}
+
+.moondown-root .moondown-list-item {
+    margin-bottom: 0.25em;
+    padding-left: 0.25em;
+}
+
+.moondown-root .moondown-list-item::marker {
+    color: var(--md-color-text-secondary);
+}
+
+.moondown-root .moondown-list-item .moondown-list {
+    margin-top: 0.25em;
+    margin-bottom: 0;
+}
+
+.moondown-root .moondown-list-item .moondown-paragraph {
+    margin-bottom: 0.25em;
+}
+
+
+/* =========================================
+   8. 引用块 (Blockquote)
+   ========================================= */
+
+.moondown-root .moondown-blockquote {
+    margin: var(--md-spacing-block) 0;
+    padding: 0.5rem 1rem;
+    border-left: 4px solid var(--md-color-blockquote-border);
+    background-color: var(--md-color-blockquote-bg);
+    color: var(--md-color-text-secondary);
+    border-radius: 0 var(--md-radius-sm) var(--md-radius-sm) 0;
+}
+
+.moondown-root .moondown-blockquote .moondown-paragraph {
+    margin-bottom: 0.5em;
+}
+
+.moondown-root .moondown-blockquote .moondown-paragraph:last-child {
+    margin-bottom: 0;
+}
+
+
+/* =========================================
+   9. 表格样式 (Tables)
+   适配 Moondown 流式渲染的非标准结构
+   ========================================= */
+
+/* 表格包装器 - 圆角边框容器 */
+.moondown-root .moondown-table-wrapper {
+    margin: var(--md-spacing-block) 0;
+    overflow: hidden;
+    border: 1px solid var(--md-color-border);
+    border-radius: var(--md-radius);
+}
+
+/* 横向滚动容器 (内嵌) */
+.moondown-root .moondown-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 基础表格样式 */
+.moondown-root .moondown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 所有单元格基础样式 - 只用内部边框 */
+.moondown-root .moondown-table th,
+.moondown-root .moondown-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--md-color-border);
+    border-right: 1px solid var(--md-color-border);
+}
+
+/* 最后一列无右边框 */
+.moondown-root .moondown-table th:last-child,
+.moondown-root .moondown-table td:last-child {
+    border-right: none;
+}
+
+/* 只对 table 直接子元素的最后一行去掉下边框 */
+.moondown-root .moondown-table>tr:last-of-type td {
+    border-bottom: none;
+}
+
+/* 表头样式 - thead 内的 th 和 td 都应用 */
+.moondown-root .moondown-table th,
+.moondown-root .moondown-table thead td {
+    background-color: var(--md-color-code-bg);
+    font-weight: 600;
+    color: var(--md-color-text-secondary);
+}
+
+/* 数据行悬停效果 */
+.moondown-root .moondown-table>tr:hover,
+.moondown-root .moondown-table tbody tr:hover {
+    background-color: var(--md-color-blockquote-bg);
+}
+
+
+/* =========================================
+   10. 链接样式 (Links)
+   ========================================= */
+
+.moondown-root .moondown-link {
+    color: var(--md-color-accent);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.moondown-root .moondown-link:hover {
+    color: var(--md-color-accent-hover);
+    text-decoration: underline;
+}
+
+.moondown-root .moondown-link:focus-visible {
+    outline: 2px solid var(--md-color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+
+/* =========================================
+   11. 图片样式 (Images)
+   ========================================= */
+
+.moondown-root .moondown-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--md-radius);
+    margin: var(--md-spacing-block) 0;
+}
+
+
+/* =========================================
+   12. 分割线 (Thematic Break)
+   ========================================= */
+
+.moondown-root .moondown-hr {
+    margin: 1.5rem 0;
+    border: none;
+    border-top: 1px solid var(--md-color-border);
+}
+
+
+/* =========================================
+   13. 焦点与无障碍 (Accessibility)
+   ========================================= */
+
+.moondown-root :focus-visible {
+    outline: 2px solid var(--md-color-accent);
+    outline-offset: 2px;
+}
+
+
+/* =========================================
+   14. 打印样式 (Print)
+   ========================================= */
+
+@media print {
+    .moondown-root {
+        --md-color-text: #000000;
+        --md-color-text-secondary: #444444;
+        --md-color-border: #999999;
+        font-size: 12pt;
+        line-height: 1.5;
+    }
+
+    .moondown-root .moondown-link[href^="http"]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.85em;
+        color: #555;
+    }
+
+    .moondown-root .moondown-heading,
+    .moondown-root .moondown-image,
+    .moondown-root .moondown-table,
+    .moondown-root .moondown-code,
+    .moondown-root .moondown-blockquote {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .moondown-root .moondown-code,
+    .moondown-root .moondown-blockquote {
+        border: 1px solid #ccc;
+        background: none !important;
+        box-shadow: none !important;
+    }
+}

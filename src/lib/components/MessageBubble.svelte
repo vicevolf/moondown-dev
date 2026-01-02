@@ -23,7 +23,7 @@
 	<div
 		class="max-w-[80%] {isUser
 			? 'bg-gradient-to-br from-slate-700 to-slate-800 text-white'
-			: 'bg-white text-slate-800 border border-slate-200'} rounded-2xl px-4 py-3 shadow-sm"
+			: 'bg-white border border-slate-200'} rounded-2xl px-4 py-3 shadow-sm"
 	>
 		<div
 			class="text-xs {isUser
@@ -33,7 +33,7 @@
 			{isUser ? "👤 你" : "✨ AI"}
 		</div>
 
-		<div class="break-words leading-relaxed">
+		<div class="break-words">
 			{#if isUser}
 				<span class="whitespace-pre-wrap">{displayText}</span>
 			{:else if $useMoondown}

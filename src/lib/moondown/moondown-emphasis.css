@@ -1,0 +1,117 @@
+/**
+ * Moondown Optional: Enhanced Emphasis
+ * 增强的文字强调效果
+ * 
+ * 包含：
+ * - 加粗文字：主题色荧光笔背景 (60% 高度)
+ * - 斜体文字：主题色波浪线背景 (33% 高度)
+ * - 加粗斜体：主题色波浪线背景 (66% 高度)
+ * - 删除线：主题色划线
+ * 
+ * 使用：在 Moondown 组件中导入此文件
+ */
+
+/* =========================================
+   加粗强调 (Bold)
+   ========================================= */
+
+.moondown-root .moondown-strong {
+    font-weight: 600;
+
+    /* 荧光笔效果：底部 60% 高度 */
+    background: linear-gradient(to top,
+            var(--md-strong-bg) 0%,
+            var(--md-strong-bg) 60%,
+            transparent 60%);
+
+    padding: 0.05em 0.15em;
+    margin: 0 -0.05em;
+    border-radius: 2px;
+
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+
+/* =========================================
+   斜体强调 (Italic) - 波浪下划线
+   ========================================= */
+
+.moondown-root .moondown-emphasis {
+    font-style: italic;
+
+    /* 使用 text-decoration 实现波浪线 */
+    text-decoration: underline wavy;
+    text-decoration-color: var(--md-emphasis-color);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+
+/* =========================================
+   加粗斜体组合 (Bold + Italic)
+   ========================================= */
+
+.moondown-root .moondown-strong .moondown-emphasis,
+.moondown-root .moondown-emphasis .moondown-strong,
+.moondown-root em>strong,
+.moondown-root strong>em {
+    font-weight: 600;
+    font-style: italic;
+
+    /* 组合效果：荧光背景 + 波浪下划线 */
+    background: linear-gradient(to top,
+            var(--md-strong-bg) 0%,
+            var(--md-strong-bg) 66%,
+            transparent 66%);
+
+    text-decoration: underline wavy;
+    text-decoration-color: var(--md-emphasis-color);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+
+    padding: 0.05em 0.15em;
+    margin: 0 -0.05em;
+    border-radius: 2px;
+}
+
+
+/* =========================================
+   删除线强调 (Strikethrough)
+   ========================================= */
+
+.moondown-root .moondown-delete {
+    text-decoration: line-through;
+    text-decoration-color: var(--md-delete-color);
+    text-decoration-thickness: 2px;
+    color: var(--md-color-text-secondary);
+    opacity: 0.8;
+}
+
+
+/* =========================================
+   默认颜色：跟随主题色
+   ========================================= */
+
+.moondown-root {
+    /* 加粗背景：主题色 25% */
+    --md-strong-bg: color-mix(in srgb, var(--md-theme-primary) 25%, transparent);
+
+    /* 斜体波浪线：主题色 60% */
+    --md-emphasis-color: color-mix(in srgb, var(--md-theme-primary) 60%, transparent);
+
+    /* 删除线：主题色 50% */
+    --md-delete-color: color-mix(in srgb, var(--md-theme-primary) 50%, transparent);
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+    .moondown-root {
+        --md-strong-bg: color-mix(in srgb, var(--md-theme-primary) 20%, transparent);
+        --md-emphasis-color: color-mix(in srgb, var(--md-theme-primary) 50%, transparent);
+        --md-delete-color: color-mix(in srgb, var(--md-theme-primary) 40%, transparent);
+    }
+}
