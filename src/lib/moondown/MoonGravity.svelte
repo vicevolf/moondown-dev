@@ -98,4 +98,9 @@
     </div>
 {/if}
 
-<Moondown content={fullContent} {revealIndex} isStreaming={!isBufferComplete} />
+<Moondown
+    content={fullContent}
+    {revealIndex}
+    {velocity}
+    isStreaming={!isBufferComplete}
+/>

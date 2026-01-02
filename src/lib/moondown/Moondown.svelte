@@ -12,6 +12,7 @@
     interface Props {
         content: string;
         revealIndex?: number; // 可选：不传则显示全部
+        velocity?: number; // 物理速度 (字符/秒)
         class?: string;
         isStreaming?: boolean;
     }
@@ -19,6 +20,7 @@
     let {
         content = "",
         revealIndex = undefined,
+        velocity = 0,
         class: className = "",
         isStreaming = true,
     }: Props = $props();
@@ -32,35 +34,47 @@
     // 渲染结果
     let blocks = $state<RenderBlock[]>([]);
 
-    // 节流解析：500ms 间隔
+    // 节流配置
+    const BASE_INTERVAL = 1000; // 基准间隔 1 秒
+
     let parseTimeout: ReturnType<typeof setTimeout> | null = null;
-    let pendingContent: string | null = null;
+    let lastParseTime = 0;
+
+    // 计算节流间隔：速度 × 0.02，限制在 0.3x ~ 1x
+    function getThrottleInterval(): number {
+        const multiplier = Math.max(0.3, Math.min(1.0, velocity * 0.02));
+        return BASE_INTERVAL * multiplier;
+    }
 
     function parse(text: string) {
         if (!engine || text === lastContent) return;
         lastContent = text;
         blocks = engine.process(text);
+        lastParseTime = Date.now();
     }
 
     function throttledParse(text: string) {
-        // 如果正在节流中，记录待解析内容
+        const now = Date.now();
+        const timeSinceLastParse = now - lastParseTime;
+        const interval = getThrottleInterval();
+
+        // 清除旧的待定定时器
         if (parseTimeout) {
-            pendingContent = text;
-            return;
+            clearTimeout(parseTimeout);
+            parseTimeout = null;
         }
 
-        // 立即解析
-        parse(text);
-
-        // 设置节流定时器
-        parseTimeout = setTimeout(() => {
-            parseTimeout = null;
-            // 如果有待解析内容，进行解析
-            if (pendingContent !== null && pendingContent !== lastContent) {
-                parse(pendingContent);
-                pendingContent = null;
-            }
-        }, 500);
+        if (timeSinceLastParse >= interval) {
+            // 已超过节流间隔，立即解析
+            parse(text);
+        } else {
+            // 还在节流期内，延迟到下次可用时间点
+            const delay = interval - timeSinceLastParse;
+            parseTimeout = setTimeout(() => {
+                parseTimeout = null;
+                parse(text);
+            }, delay);
+        }
     }
 
     // 响应内容变化（节流解析）
@@ -71,12 +85,12 @@
             lastContent = "";
             blocks = [];
             engine.reset();
-            // 清理定时器
+            // 清理定时器和状态
             if (parseTimeout) {
                 clearTimeout(parseTimeout);
                 parseTimeout = null;
-                pendingContent = null;
             }
+            lastParseTime = 0;
             return;
         }
 
@@ -89,14 +103,14 @@
     // 所以网络卡顿导致缓冲区暂时空了不会触发这里
     $effect(() => {
         if (!isStreaming && engine) {
-            // 流结束时，确保最后一次解析
-            if (pendingContent !== null) {
-                parse(pendingContent);
-                pendingContent = null;
-            }
+            // 流结束时，确保最后一次用最新内容解析
             if (parseTimeout) {
                 clearTimeout(parseTimeout);
                 parseTimeout = null;
+            }
+            // 强制最终解析
+            if (content !== lastContent) {
+                parse(content);
             }
             console.log("%c[🌙 Moondown] 流结束，引擎已释放", "color: #27ae60");
             engine = null;
