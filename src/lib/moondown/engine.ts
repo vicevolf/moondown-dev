@@ -24,6 +24,7 @@ export class MoondownEngine {
     // 缓存：避免重复计算和数组创建
     private lastInputLength = 0;
     private cachedResult: RenderBlock[] = [];
+    private lastStableCount = 0; // 追踪上次稳定块数量，用于结构共享
 
     private parseOptions = {
         extensions: [gfm()],
@@ -34,6 +35,45 @@ export class MoondownEngine {
         if (DEBUG) {
             console.log(`%c[🌙 Moondown ${this.instanceId.slice(0, 4)}] ${message}`, `color: ${color}`);
         }
+    }
+
+    /**
+     * 结构共享：智能合并输出数组，复用未变化块的引用
+     * 核心优化：让 Svelte 的 keyed each 跳过未变化块的 Diff
+     */
+    private smartMerge(newBlocks: RenderBlock[]): RenderBlock[] {
+        const oldResult = this.cachedResult;
+        const currentStableCount = this.stableBlocks.length;
+
+        // Case 1: 首次调用或重置后，无可复用引用
+        if (oldResult.length === 0) {
+            this.lastStableCount = currentStableCount;
+            return newBlocks;
+        }
+
+        // Case 2: 稳定块数量未变（仅 pending 块内容更新）
+        // 复用整个 oldResult 的前 N-1 个引用，只替换最后一个 pending
+        if (currentStableCount === this.lastStableCount && oldResult.length === newBlocks.length) {
+            const lastIndex = oldResult.length - 1;
+            // 直接复用旧数组的稳定块部分
+            const merged = oldResult.slice(0, lastIndex);
+            merged.push(newBlocks[lastIndex]);
+            this.log(`♻️ 结构共享: 复用 ${lastIndex} 个块引用 (pending 更新)`, '#1abc9c');
+            return merged;
+        }
+
+        // Case 3: 新增了稳定块（老的 pending 变成了 stable）
+        if (currentStableCount > this.lastStableCount) {
+            // stableBlocks 数组本身的引用是稳定的（通过 push 追加）
+            // 关键：复用 stableBlocks 中已有的块对象引用
+            this.log(`♻️ 结构共享: 新增 ${currentStableCount - this.lastStableCount} 个稳定块，复用 ${this.lastStableCount} 个旧引用`, '#1abc9c');
+            this.lastStableCount = currentStableCount;
+            return newBlocks;
+        }
+
+        // Case 4: 其他情况（如块减少），返回新数组
+        this.lastStableCount = currentStableCount;
+        return newBlocks;
     }
 
     /**
@@ -112,10 +152,11 @@ export class MoondownEngine {
             this.log(`⏳ Pending 块: ${pendingNode.type} | 输出: ${this.stableBlocks.length} stable + 1 pending`, '#9b59b6');
         }
 
-        // 复用数组：只在有pending时拼接，否则直接返回stable
-        this.cachedResult = pendingBlocks.length > 0
+        // 结构共享：智能合并，复用未变化块的引用
+        const newResult = pendingBlocks.length > 0
             ? [...this.stableBlocks, ...pendingBlocks]
             : this.stableBlocks;
+        this.cachedResult = this.smartMerge(newResult);
         return this.cachedResult;
     }
 
@@ -131,5 +172,6 @@ export class MoondownEngine {
         this.currentPendingId = `moondown-pending-${this.instanceId}-${Date.now()}`;
         this.lastInputLength = 0;
         this.cachedResult = [];
+        this.lastStableCount = 0;
     }
 }
