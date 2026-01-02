@@ -36,7 +36,7 @@ export type BufferCallback = (state: BufferState) => void;
  * 平滑过渡到目标速度
  */
 class SpringPhysics {
-    velocity: number = 0;
+    velocity: number = 15;  // 初始速度 15 c/s，避免冷启动
     private stiffness: number = 5.0;  // 弹簧刚度
     private damping: number = 2.5;    // 阻尼系数
 
