@@ -5,7 +5,6 @@
 	import MessageInput from "./MessageInput.svelte";
 	import { deleteApiKey } from "$lib/indexeddb";
 	import { Button } from "$lib/components/ui/button";
-	import { useMoondown } from "$lib/stores";
 
 	let { apiKey, onKeyDeleted }: { apiKey: string; onKeyDeleted: () => void } =
 		$props();
@@ -28,10 +27,6 @@
 			await deleteApiKey();
 			onKeyDeleted();
 		}
-	}
-
-	function toggleRenderer() {
-		useMoondown.update((v) => !v);
 	}
 
 	let canSend = $derived(chat.status === "ready");
@@ -57,15 +52,6 @@
 			</div>
 		</div>
 		<div class="flex items-center gap-2">
-			<!-- Renderer Toggle -->
-			<button
-				onclick={toggleRenderer}
-				class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all {$useMoondown
-					? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-					: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
-			>
-				{$useMoondown ? "🌙 Moondown" : "📜 StreamMD"}
-			</button>
 			<Button
 				onclick={handleDeleteKey}
 				variant="ghost"

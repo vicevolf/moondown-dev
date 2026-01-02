@@ -1,8 +1,6 @@
 <script lang="ts">
 	import type { UIMessage } from "ai";
-	import BufferedText from "./BufferedText.svelte";
 	import BufferedTextMoondown from "$lib/moondown/BufferedTextMoondown.svelte";
-	import { useMoondown } from "$lib/stores";
 
 	let {
 		message,
@@ -36,14 +34,8 @@
 		<div class="break-words">
 			{#if isUser}
 				<span class="whitespace-pre-wrap">{displayText}</span>
-			{:else if $useMoondown}
-				<BufferedTextMoondown
-					content={displayText}
-					id={message.id}
-					{isStreaming}
-				/>
 			{:else}
-				<BufferedText
+				<BufferedTextMoondown
 					content={displayText}
 					id={message.id}
 					{isStreaming}
