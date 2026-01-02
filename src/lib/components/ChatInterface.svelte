@@ -14,7 +14,7 @@
 	const chat = new Chat({
 		transport: new DefaultChatTransport({
 			api: "/api/chat",
-			body: () => ({ apiKey }),
+			body: () => (apiKey === 'env' ? {} : { apiKey }),
 		}),
 	});
 

@@ -6,12 +6,24 @@
 
 	let apiKey = $state<string | null>(null);
 	let loading = $state(true);
+	let hasEnvKey = $state(false);
 
 	onMount(async () => {
 		try {
+			// 检查服务端是否配置了环境变量
+			const response = await fetch('/api/check-env-key');
+			if (response.ok) {
+				const data = await response.json();
+				hasEnvKey = data.hasKey;
+			}
+
+			// 尝试加载本地存储的 key
 			const storedKey = await loadApiKey();
 			if (storedKey) {
 				apiKey = storedKey;
+			} else if (hasEnvKey) {
+				// 如果有环境变量且没有本地 key，直接进入聊天界面
+				apiKey = 'env';
 			}
 		} catch (err) {
 			console.error('Failed to load API key:', err);
