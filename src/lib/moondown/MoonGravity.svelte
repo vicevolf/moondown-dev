@@ -5,9 +5,8 @@
 
     let {
         content,
-        id,
         isStreaming = true,
-    }: { content: string; id: string; isStreaming?: boolean } = $props();
+    }: { content: string; isStreaming?: boolean } = $props();
 
     // 缓冲区状态
     let displayedText = $state("");
@@ -73,15 +72,28 @@
         }
     });
 
-    // 调试模式
-    const DEBUG = true;
+    // 调试模式：开发环境自动启用
+    const DEBUG = import.meta.env.DEV;
 </script>
 
 {#if DEBUG}
     <div
-        class="fixed top-2 right-2 bg-black/80 text-white text-xs p-2 rounded font-mono z-50"
+        style="
+            position: fixed;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            z-index: 50;
+        "
     >
-        <div class="text-emerald-400 font-bold mb-1">🌙 MoonGravity</div>
+        <div style="color: #34d399; font-weight: bold; margin-bottom: 0.25rem;">
+            🌙 MoonGravity
+        </div>
         <div>Buffer: {bufferSize} chars</div>
         <div>Speed: {velocity.toFixed(1)} c/s</div>
         <div>Displayed: {displayedText.length} / {content.length}</div>

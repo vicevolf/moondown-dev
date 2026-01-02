@@ -11,8 +11,8 @@ export interface RenderBlock {
     node: RootContent;
 }
 
-// 调试开关
-const DEBUG = true;
+// 调试开关：开发模式自动启用
+const DEBUG = import.meta.env.DEV;
 
 export class MoondownEngine {
     private cursor = 0;

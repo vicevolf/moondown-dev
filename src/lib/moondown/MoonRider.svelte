@@ -93,6 +93,13 @@
     {:else if n.type === "image"}
         <img src={n.url} alt={n.alt || ""} class="moondown-image" />
     {:else if n.type === "table"}
+        <!--
+            ⚠️ 表格结构说明 (流式渲染妥协)
+            - 只有第一个数据行被 <tbody> 显式包裹
+            - 后续行直接渲染为裸露的 <tr>
+            - 这是流式渲染场景下的有意设计：行数动态增长，无法预知结束点
+            - 浏览器会自动为裸露的 <tr> 创建隐式 <tbody>，功能不受影响
+        -->
         <div class="moondown-table-wrapper">
             <table class="moondown-table">
                 {#each (n as Parent).children as child, i}

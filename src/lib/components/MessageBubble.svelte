@@ -35,11 +35,7 @@
 			{#if isUser}
 				<span class="whitespace-pre-wrap">{displayText}</span>
 			{:else}
-				<MoonGravity
-					content={displayText}
-					id={message.id}
-					{isStreaming}
-				/>
+				<MoonGravity content={displayText} {isStreaming} />
 			{/if}
 		</div>
 	</div>
