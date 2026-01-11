@@ -2,6 +2,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { gfm } from 'micromark-extension-gfm';
 import type { RootContent, Parent, Text, InlineCode, Code } from 'mdast';
+import { moonLog } from './extensions';
 
 export type BlockStatus = 'stable' | 'pending';
 
@@ -30,7 +31,6 @@ export interface RenderBlock {
 }
 
 // 调试开关：开发模式自动启用
-const DEBUG = import.meta.env.DEV;
 
 export class MoondownEngine {
     private cursor = 0;
@@ -64,12 +64,6 @@ export class MoondownEngine {
         }
         if (extensions.mdastExtensions) {
             this.parseOptions.mdastExtensions.push(...extensions.mdastExtensions);
-        }
-    }
-
-    private log(message: string, color = '#9b59b6') {
-        if (DEBUG) {
-            console.log(`%c[🌙 Moondown ${this.instanceId.slice(0, 4)}] ${message}`, `color: ${color}`);
         }
     }
 
@@ -170,7 +164,7 @@ export class MoondownEngine {
             // 直接复用旧数组的稳定块部分
             const merged = oldResult.slice(0, lastIndex);
             merged.push(newBlocks[lastIndex]);
-            this.log(`♻️ 结构共享: 复用 ${lastIndex} 个块引用 (pending 更新)`, '#1abc9c');
+            moonLog('Engine', '♻️', '结构复用', { Reuse: lastIndex, Strategy: 'PendingUpdate' }, this.instanceId);
             return merged;
         }
 
@@ -178,7 +172,7 @@ export class MoondownEngine {
         if (currentStableCount > this.lastStableCount) {
             // stableBlocks 数组本身的引用是稳定的（通过 push 追加）
             // 关键：复用 stableBlocks 中已有的块对象引用
-            this.log(`♻️ 结构共享: 新增 ${currentStableCount - this.lastStableCount} 个稳定块，复用 ${this.lastStableCount} 个旧引用`, '#1abc9c');
+            moonLog('Engine', '♻️', '结构复用', { New: currentStableCount - this.lastStableCount, Reuse: this.lastStableCount, Strategy: 'Append' }, this.instanceId);
             this.lastStableCount = currentStableCount;
             return newBlocks;
         }
@@ -202,7 +196,7 @@ export class MoondownEngine {
 
         // 1. 重置检测：如果新文本比游标位置短，说明内容被重置
         if (fullText.length < this.cursor) {
-            this.log('⚠️ 检测到内容重置，重新初始化引擎', '#e74c3c');
+            moonLog('Engine', '⚠️', '内容重置', { Action: '重新初始化' }, this.instanceId);
             this.reset();
         }
 
@@ -217,7 +211,7 @@ export class MoondownEngine {
         const root = fromMarkdown(textToParse, this.parseOptions);
         const children = root.children;
 
-        this.log(`解析增量 +${textToParse.length} 字符 → ${children.length} 个节点 | 游标: ${this.cursor}`, '#3498db');
+        moonLog('Engine', '📥', '增量注入', { Chars: `+${textToParse.length}`, Nodes: children.length, Cursor: this.cursor }, this.instanceId);
 
         // 4. 提交守卫 (Commit Guard)
         // 只有当节点数量 > 1 时，前 N-1 个节点才是安全闭合的
@@ -245,12 +239,12 @@ export class MoondownEngine {
                         });
                     }
 
-                    this.log(`✅ 提交 ${newStableNodes.length} 个稳定块 (${newStableNodes.map(n => n.type).join(', ')}) | 总稳定块: ${this.stableBlocks.length} | 字符范围: 0-${this.cursor + consumedLength}`, '#27ae60');
+                    moonLog('Engine', '💾', '节点提交', { Commit: newStableNodes.length, Types: newStableNodes.map(n => n.type).join(','), Total: this.stableBlocks.length, Range: `0-${this.cursor + consumedLength}` }, this.instanceId);
 
                     // 推进游标
                     const oldCursor = this.cursor;
                     this.cursor += consumedLength;
-                    this.log(`📍 游标推进: ${oldCursor} → ${this.cursor} (+${consumedLength})`, '#f39c12');
+                    moonLog('Engine', '📍', '游标推进', { From: oldCursor, To: this.cursor, Delta: `+${consumedLength}` }, this.instanceId);
 
                     // 生成新的 Pending ID
                     this.currentPendingId = `moondown-pending-${this.instanceId}-${Date.now()}-${this.blockCounter}`;
@@ -272,7 +266,7 @@ export class MoondownEngine {
                 node: pendingNode,
                 range: { charStart: blockCharStart, charEnd: blockCharEnd }
             });
-            this.log(`⏳ Pending 块: ${pendingNode.type} | 输出: ${this.stableBlocks.length} stable + 1 pending | 范围: ${blockCharStart}-${blockCharEnd}`, '#9b59b6');
+            moonLog('Engine', '🔨', '构建待定', { Pending: `1 (${pendingNode.type})`, Stable: this.stableBlocks.length, Range: `${blockCharStart}-${blockCharEnd}` }, this.instanceId);
         }
 
         // 结构共享：智能合并，复用未变化块的引用
@@ -288,7 +282,7 @@ export class MoondownEngine {
      * 不会清除已提交的 Stable 块
      */
     resetPending() {
-        this.log('🔄 重置待定块缓存（保留 Stable 块）', '#e67e22');
+        moonLog('Engine', '🔄', '状态重置', { Mode: 'Soft', Action: '保留 Stable' }, this.instanceId);
         this.lastInputLength = 0; // 强制 process() 重新执行
         this.currentPendingId = `moondown-pending-${this.instanceId}-${Date.now()}`;
         // 清除缓存中的 pending 部分，保留 stable 部分
@@ -299,7 +293,7 @@ export class MoondownEngine {
      * 重置引擎状态
      */
     reset(): void {
-        this.log('🔄 引擎重置', '#e74c3c');
+        moonLog('Engine', '🔄', '引擎重置', { Mode: 'Full' }, this.instanceId);
         this.cursor = 0;
         this.stableBlocks = [];
         this.blockCounter = 0;

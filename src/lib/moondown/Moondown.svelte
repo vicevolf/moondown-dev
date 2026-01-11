@@ -4,6 +4,7 @@
     import { BASE_THROTTLE_SECONDS } from "./moonGravity";
     import MoonRider from "./MoonRider.svelte";
     import { mathLoader } from "./extensions/mathLoader";
+    import { moonLog } from "./extensions";
 
     // 导入 Moondown 排版系统 (缺省样式)
     import "./moondown.css";
@@ -26,9 +27,6 @@
         class: className = "",
         isStreaming = true,
     }: Props = $props();
-
-    // 调试开关
-    const DEBUG = import.meta.env.DEV;
 
     // 引擎实例
     let engine: MoondownEngine | null = new MoondownEngine();
@@ -53,12 +51,7 @@
 
     function parse(text: string) {
         if (!engine || text === lastContent) {
-            if (DEBUG) {
-                console.log(
-                    `%c[🌙 Moondown] 跳过解析: engine=${!!engine}, 内容相同=${text === lastContent}`,
-                    "color: #95a5a6",
-                );
-            }
+            moonLog('Stream', '⏭️', '解析跳过', { Engine: !!engine, SameContent: text === lastContent });
             return;
         }
 
@@ -77,6 +70,7 @@
             // 1. LaTeX 检测
             if (!mathEnabled && increment.includes("$")) {
                 mathEnabled = true;
+                moonLog('Stream', '⚡', '插件激活', { Plugin: 'LaTeX', Trigger: 'MathSymbol' });
 
                 mathLoader.load().then((modules) => {
                     if (!engine) return;
@@ -86,12 +80,6 @@
                         extensions: [modules.math()],
                         mdastExtensions: [modules.mathFromMarkdown()],
                     });
-
-                    if (DEBUG) {
-                        console.log(
-                            "[🌙 Moondown] LaTeX 支持已激活，优化重置：仅重析 Pending 部分",
-                        );
-                    }
 
                     // 优化：不完全重置，只重置 Pending 状态
                     // 这样已生成的 Stable 块（不含 $ 的部分）会保留，避免画面闪烁
@@ -108,11 +96,7 @@
                 (increment.includes("```") || increment.includes("~~~"))
             ) {
                 prismPreloaded = true;
-                if (DEBUG) {
-                    console.log(
-                        "[🌙 Moondown] 检测到代码块标记，预加载 Prism 依赖...",
-                    );
-                }
+                moonLog('Stream', '⚡', '插件激活', { Plugin: 'Prism', Trigger: 'CodeBlock' });
                 loadPrism();
             }
         }
@@ -189,24 +173,12 @@
             }
 
             // 调试：记录流结束时的状态
-            if (DEBUG) {
-                const lastBlockRange =
-                    blocks.length > 0 ? blocks[blocks.length - 1].range : null;
-                console.log(
-                    `%c[🌙 Moondown] 流结束前状态%c | content长度: %c${content.length}%c | lastContent长度: %c${lastContent.length}%c | 最后块范围: %c${lastBlockRange ? `${lastBlockRange.charStart}-${lastBlockRange.charEnd}` : "N/A"}%c | 有待定解析: %c${hadPendingTimeout}`,
-                    "color: #e67e22; font-weight: bold",
-                    "color: #888",
-                    "color: #3498db; font-weight: bold",
-                    "color: #888",
-                    "color: #9b59b6; font-weight: bold",
-                    "color: #888",
-                    "color: #27ae60; font-weight: bold",
-                    "color: #888",
-                    hadPendingTimeout
-                        ? "color: #e74c3c; font-weight: bold"
-                        : "color: #27ae60",
-                );
-            }
+            const lastBlockRange = blocks.length > 0 ? blocks[blocks.length - 1].range : null;
+            moonLog('Stream', '📊', '流态快照', {
+                Len: content.length,
+                LastBlock: lastBlockRange ? `${lastBlockRange.charStart}-${lastBlockRange.charEnd}` : 'N/A',
+                Pending: hadPendingTimeout
+            });
 
             // 强制最终解析（无论 lastContent 状态如何）
             // engine.process() 内部有去重逻辑，重复调用不会有性能问题
@@ -214,20 +186,13 @@
             blocks = engine.process(content);
 
             // 调试：记录最终解析结果
-            if (DEBUG) {
-                const finalBlockRange =
-                    blocks.length > 0 ? blocks[blocks.length - 1].range : null;
-                console.log(
-                    `%c[🌙 Moondown] 最终解析完成%c | 块数: %c${blocks.length}%c | 最后块范围: %c${finalBlockRange ? `${finalBlockRange.charStart}-${finalBlockRange.charEnd}` : "N/A"}`,
-                    "color: #27ae60; font-weight: bold",
-                    "color: #888",
-                    "color: #3498db; font-weight: bold",
-                    "color: #888",
-                    "color: #27ae60; font-weight: bold",
-                );
-            }
+            const finalBlockRange = blocks.length > 0 ? blocks[blocks.length - 1].range : null;
+            moonLog('Stream', '✅', '解析终结', {
+                Blocks: blocks.length,
+                LastBlock: finalBlockRange ? `${finalBlockRange.charStart}-${finalBlockRange.charEnd}` : 'N/A'
+            });
 
-            console.log("%c[🌙 Moondown] 流结束，引擎已释放", "color: #27ae60");
+            moonLog('Stream', '🏁', '实例销毁', { Action: 'Engine Released' });
             engine = null;
         }
     });

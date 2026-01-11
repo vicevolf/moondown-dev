@@ -4,7 +4,7 @@
  * 只有当页面存在代码块时才会加载任何 Prism 相关资源
  */
 
-
+import { moonLog, formatMs } from './index';
 
 // Prism 加载状态
 let prismReady = false;
@@ -167,7 +167,7 @@ export async function loadPrism(): Promise<void> {
     }
 
     prismLoading = (async () => {
-        console.log('[🌙 Moondown] 开始动态加载 Prism (Code Highlight) 依赖...');
+        moonLog('Loader', '⏳', '资源加载', { Resource: 'Prism Core + Autoloader' });
         const startTime = performance.now();
 
         // 注入 CSS
@@ -179,7 +179,7 @@ export async function loadPrism(): Promise<void> {
 
         const Prism = (window as any).Prism || (globalThis as any).Prism;
         if (!Prism) {
-            console.error('[🌙 Moondown] Prism 加载失败');
+            console.error('[🌚 Loader] Prism 加载失败');
             throw new Error('Failed to load Prism');
         }
 
@@ -195,12 +195,16 @@ export async function loadPrism(): Promise<void> {
             Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/components/';
         }
 
-        console.log(`[🌙 Moondown] Prism 依赖加载完成 (本地核心 + CDN语言包) (${(performance.now() - startTime).toFixed(1)}ms)`);
+        moonLog('Loader', '✅', '资源就绪', { Resource: 'Prism Core + Autoloader', '耗时': formatMs(performance.now() - startTime), '语言包': 'CDN按需' });
         prismReady = true;
     })();
 
     return prismLoading;
 }
+
+// 语言包加载状态追踪
+const loadedLanguages = new Set<string>();
+const loadingLanguages = new Map<string, Promise<void>>();
 
 /**
  * 确保 Prism 已加载，然后高亮元素
@@ -216,10 +220,34 @@ export async function highlightElement(element: HTMLElement, lang: string): Prom
     const Prism = (window as any).Prism;
     if (!Prism || !element) return;
 
-    // 设置语言类名，Autoloader 会根据这个自动加载所需语言
+    // 设置语言类名
     element.className = `language-${lang}`;
 
-    // 高亮元素（Autoloader 会自动处理未加载的语言）
+    // 检查语言是否已加载
+    const isLoaded = !!Prism.languages[lang] || loadedLanguages.has(lang);
+    
+    if (!isLoaded && Prism.plugins?.autoloader) {
+        // CDN 语言包按需加载
+        if (!loadingLanguages.has(lang)) {
+            const startTime = performance.now();
+            moonLog('Loader', '⏳', '资源加载', { Resource: `Prism Lang: ${lang}`, Source: 'CDN' });
+            
+            const loadPromise = new Promise<void>((resolve) => {
+                Prism.plugins.autoloader.loadLanguages([lang], () => {
+                    loadedLanguages.add(lang);
+                    moonLog('Loader', '✅', '资源就绪', { 
+                        Resource: `Prism Lang: ${lang}`, 
+                        '耗时': formatMs(performance.now() - startTime) 
+                    });
+                    resolve();
+                });
+            });
+            loadingLanguages.set(lang, loadPromise);
+        }
+        await loadingLanguages.get(lang);
+    }
+
+    // 高亮元素
     Prism.highlightElement(element);
 }
 

@@ -6,6 +6,8 @@
  *        支持预渲染 + 渐显模式
  */
 
+import { moonLog, formatMs, formatSpeed } from './extensions';
+
 /** 基准节流时间（秒） */
 export const BASE_THROTTLE_SECONDS = 0.8;
 
@@ -59,9 +61,6 @@ class SpringPhysics {
         this.velocity = 30;
     }
 }
-
-// 调试开关：开发模式自动启用
-const DEBUG = import.meta.env.DEV;
 
 export class TextBuffer {
     /** 完整内容（网络接收的全部文本） */
@@ -214,25 +213,20 @@ export class TextBuffer {
         const isComplete = this.isEnded && remaining === 0 && !this.isRunning;
 
         // 尾字上屏时统一汇报
-        if (isComplete && DEBUG && !this.hasReportedStats && this.timeFirstCharReceived > 0) {
+        if (isComplete && !this.hasReportedStats && this.timeFirstCharReceived > 0) {
             this.hasReportedStats = true;
             const now = performance.now();
             const firstCharDelay = this.timeFirstCharRevealed - this.timeFirstCharReceived;
             const networkTime = this.timeLastCharReceived - this.timeFirstCharReceived;
             const totalTime = now - this.timeFirstCharReceived;
 
-            console.log(
-                `%c[🌙 Moondown] 流式完成%c | 首字延迟 %c${firstCharDelay.toFixed(0)}ms%c | 网络耗时 %c${networkTime.toFixed(0)}ms%c | 总耗时 %c${totalTime.toFixed(0)}ms%c | 总字符 %c${this.fullContent.length}`,
-                'color: #9b59b6; font-weight: bold',
-                'color: #888',
-                'color: #2ecc71; font-weight: bold',
-                'color: #888',
-                'color: #e67e22; font-weight: bold',
-                'color: #888',
-                'color: #3498db; font-weight: bold',
-                'color: #888',
-                'color: #888; font-weight: bold'
-            );
+            moonLog('Perf', '🏁', '流式完成', {
+                '首字': formatMs(firstCharDelay),
+                '网络': formatMs(networkTime),
+                '总时': formatMs(totalTime),
+                '字符': this.fullContent.length,
+                '均速': formatSpeed(this.fullContent.length, totalTime)
+            });
         }
 
         this.onUpdate({

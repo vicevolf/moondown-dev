@@ -1,5 +1,6 @@
 import type { Extension } from 'micromark-util-types';
 import type { Extension as MdastExtension } from 'mdast-util-from-markdown';
+import { moonLog, formatMs } from './index';
 
 interface MathModules {
     math: (options?: any) => Extension;
@@ -25,7 +26,7 @@ class MathLoader {
         }
 
         this.loadingPromise = (async () => {
-            console.log('[🌙 Moondown] 开始动态加载 LaTeX 依赖...');
+            moonLog('Loader', '⏳', '资源加载', { Resource: 'KaTeX Core + CSS' });
             const startTime = performance.now();
 
             const [
@@ -38,7 +39,7 @@ class MathLoader {
                 // @ts-ignore
                 import('katex')
             ]).catch(err => {
-                console.error('[🌙 Moondown] LaTeX 依赖加载失败:', err);
+                console.error('[🌚 Loader] LaTeX 依赖加载失败:', err);
                 throw err;
             });
 
@@ -48,13 +49,13 @@ class MathLoader {
                     // @ts-ignore
                     await import('./katex.min.css');
                     this.isCSSLoaded = true;
-                    console.log('[🌙 Moondown] 本地 KaTeX CSS 已加载');
+                    
                 } catch (e) {
-                    console.error('[🌙 Moondown] 本地 KaTeX CSS 加载失败:', e);
+                    console.error('[🌚 Loader] KaTeX CSS 加载失败:', e);
                 }
             }
 
-            console.log(`[🌙 Moondown] LaTeX 依赖加载完成 (${(performance.now() - startTime).toFixed(1)}ms)`);
+            moonLog('Loader', '✅', '资源就绪', { Resource: 'KaTeX Core + CSS', '耗时': formatMs(performance.now() - startTime) });
 
             this.modules = {
                 math,

@@ -28,7 +28,7 @@
             });
             error = null;
         } catch (e) {
-            console.error("[🌙 Moondown] KaTeX 渲染错误:", e);
+            console.error("[🌚 Loader] KaTeX 渲染错误:", e);
             error = (e as Error).message;
             html = value;
         }

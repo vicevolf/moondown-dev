@@ -3,6 +3,7 @@
     import { TextBuffer, type BufferState } from "./moonGravity";
     import Moondown from "./Moondown.svelte";
     import { updateDebugState, clearDebugState } from "./extensions/debugStore";
+    import { moonLog } from "./extensions";
 
     let {
         content,
@@ -43,14 +44,7 @@
 
             // 调试：isComplete 状态变化
             if (import.meta.env.DEV && !prevComplete && isBufferComplete) {
-                console.log(
-                    `%c[🌙 MoonGravity] isBufferComplete 变为 true%c | fullContent长度: %c${fullContent.length}%c | revealIndex: %c${revealIndex}`,
-                    "color: #e74c3c; font-weight: bold",
-                    "color: #888",
-                    "color: #3498db; font-weight: bold",
-                    "color: #888",
-                    "color: #9b59b6; font-weight: bold",
-                );
+                moonLog('Gravity', '⚓', '缓冲同步', { Content: fullContent.length, Reveal: revealIndex });
             }
 
             // 触发内容更新回调
@@ -109,14 +103,7 @@
             buffer.end();
             hasEnded = true;
             if (import.meta.env.DEV) {
-                console.log(
-                    `%c[🌙 MoonGravity] 流结束信号%c | fullContent长度: %c${fullContent.length}%c | revealIndex: %c${revealIndex}`,
-                    "color: #e67e22; font-weight: bold",
-                    "color: #888",
-                    "color: #3498db; font-weight: bold",
-                    "color: #888",
-                    "color: #9b59b6; font-weight: bold",
-                );
+                moonLog('Gravity', '📡', '结束信号', { EOF: true, Content: fullContent.length, Reveal: revealIndex });
             }
         }
     });
