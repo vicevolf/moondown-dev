@@ -44,10 +44,28 @@ export class MoondownEngine {
     private cachedResult: RenderBlock[] = [];
     private lastStableCount = 0; // 追踪上次稳定块数量，用于结构共享
 
-    private parseOptions = {
-        extensions: [gfm()],
-        mdastExtensions: [gfmFromMarkdown()]
-    };
+    private parseOptions: {
+        extensions: any[];
+        mdastExtensions: any[];
+    } = {
+            extensions: [gfm()],
+            mdastExtensions: [gfmFromMarkdown()]
+        };
+
+    /**
+     * 动态添加扩展 (如 LaTeX)
+     */
+    addExtensions(extensions: {
+        extensions?: any[];
+        mdastExtensions?: any[];
+    }) {
+        if (extensions.extensions) {
+            this.parseOptions.extensions.push(...extensions.extensions);
+        }
+        if (extensions.mdastExtensions) {
+            this.parseOptions.mdastExtensions.push(...extensions.mdastExtensions);
+        }
+    }
 
     private log(message: string, color = '#9b59b6') {
         if (DEBUG) {

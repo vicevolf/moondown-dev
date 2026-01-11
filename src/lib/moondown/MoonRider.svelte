@@ -2,6 +2,7 @@
     import type { Content, Parent } from "mdast";
     import type { RangeInfo, RangedNode } from "./engine";
     import { highlightElement } from "./extensions/prismLoader";
+    import MathRenderer from "./renderers/MathRenderer.svelte";
 
     interface Props {
         node: Content;
@@ -223,6 +224,29 @@
                 {@render renderNode(child)}
             {/each}
         </td>
+    {:else if n.type === "math"}
+        {@const isComplete = visibility === "full"}
+        {#if isComplete}
+            <div class="moondown-math-block">
+                <MathRenderer value={n.value} displayMode={true} />
+            </div>
+        {:else if range}
+            <!-- 未完成时显示源码，避免渲染报错 -->
+            <div class="moondown-math-block source">
+                {clipText(n.value, range)}
+            </div>
+        {/if}
+    {:else if n.type === "inlineMath"}
+        {@const isComplete = visibility === "full"}
+        {#if isComplete}
+            <span class="moondown-math-inline">
+                <MathRenderer value={n.value} displayMode={false} />
+            </span>
+        {:else if range}
+            <span class="moondown-math-inline source">
+                {clipText(n.value, range)}
+            </span>
+        {/if}
     {:else}
         <!-- 兜底渲染 -->
         {#if "value" in n}
