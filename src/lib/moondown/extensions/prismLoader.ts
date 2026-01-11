@@ -4,7 +4,7 @@
  * 只有当页面存在代码块时才会加载任何 Prism 相关资源
  */
 
-const CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0';
+
 
 // Prism 加载状态
 let prismReady = false;
@@ -13,25 +13,7 @@ let prismLoading: Promise<void> | null = null;
 // CSS 注入状态
 let cssInjected = false;
 
-/**
- * 动态加载脚本
- */
-function loadScript(url: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        // 检查是否已加载
-        if (document.querySelector(`script[src="${url}"]`)) {
-            resolve();
-            return;
-        }
 
-        const script = document.createElement('script');
-        script.src = url;
-        script.async = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
-        document.head.appendChild(script);
-    });
-}
 
 /**
  * 动态注入 Prism 主题 CSS
@@ -175,7 +157,7 @@ function injectPrismCSS(): void {
 /**
  * 加载 Prism 核心 + Autoloader 插件
  */
-async function loadPrism(): Promise<void> {
+export async function loadPrism(): Promise<void> {
     if (prismReady && typeof window !== 'undefined' && (window as any).Prism) {
         return;
     }
@@ -185,28 +167,35 @@ async function loadPrism(): Promise<void> {
     }
 
     prismLoading = (async () => {
+        console.log('[🌙 Moondown] 开始动态加载 Prism (Code Highlight) 依赖...');
+        const startTime = performance.now();
+
         // 注入 CSS
         injectPrismCSS();
 
-        // 加载 Prism 核心
-        await loadScript(`${CDN_BASE}/prism.min.js`);
+        // 加载 Prism 核心 (本地)
+        // @ts-ignore
+        await import('./prism.min.js');
 
-        const Prism = (window as any).Prism;
+        const Prism = (window as any).Prism || (globalThis as any).Prism;
         if (!Prism) {
+            console.error('[🌙 Moondown] Prism 加载失败');
             throw new Error('Failed to load Prism');
         }
 
         // 禁用自动高亮
         Prism.manual = true;
 
-        // 加载 Autoloader 插件
-        await loadScript(`${CDN_BASE}/plugins/autoloader/prism-autoloader.min.js`);
+        // 加载 Autoloader 插件 (本地)
+        // @ts-ignore
+        await import('./prism-autoloader.min.js');
 
-        // 配置 Autoloader 使用 CDN 路径
+        // 配置 Autoloader 使用 CDN 路径 (语言文件仍从 CDN 获取，避免本地打包过大)
         if (Prism.plugins?.autoloader) {
-            Prism.plugins.autoloader.languages_path = `${CDN_BASE}/components/`;
+            Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/components/';
         }
 
+        console.log(`[🌙 Moondown] Prism 依赖加载完成 (本地核心 + CDN语言包) (${(performance.now() - startTime).toFixed(1)}ms)`);
         prismReady = true;
     })();
 

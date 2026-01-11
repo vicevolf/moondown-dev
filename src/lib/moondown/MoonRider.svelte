@@ -2,7 +2,7 @@
     import type { Content, Parent } from "mdast";
     import type { RangeInfo, RangedNode } from "./engine";
     import { highlightElement } from "./extensions/prismLoader";
-    import MathRenderer from "./renderers/MathRenderer.svelte";
+    import MathRenderer from "./extensions/MathRenderer.svelte";
 
     interface Props {
         node: Content;

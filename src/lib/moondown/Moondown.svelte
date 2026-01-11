@@ -3,7 +3,7 @@
     import { MoondownEngine, type RenderBlock } from "./engine";
     import { BASE_THROTTLE_SECONDS } from "./moonGravity";
     import MoonRider from "./MoonRider.svelte";
-    import { mathLoader } from "./mathLoader";
+    import { mathLoader } from "./extensions/mathLoader";
 
     // 导入 Moondown 排版系统 (缺省样式)
     import "./moondown.css";
@@ -61,6 +61,63 @@
             }
             return;
         }
+
+        // --- 增量语法检测优化 ---
+        // 仅在尚未启用相关功能时，扫描新增文本片段
+        if (!mathEnabled || !prismPreloaded) {
+            let increment = text;
+            // 优化：如果是纯追加模式，只扫描新增部分
+            if (
+                text.length > lastContent.length &&
+                text.startsWith(lastContent)
+            ) {
+                increment = text.slice(lastContent.length);
+            }
+
+            // 1. LaTeX 检测
+            if (!mathEnabled && increment.includes("$")) {
+                mathEnabled = true;
+
+                mathLoader.load().then((modules) => {
+                    if (!engine) return;
+
+                    // 扩展引擎配置
+                    engine.addExtensions({
+                        extensions: [modules.math()],
+                        mdastExtensions: [modules.mathFromMarkdown()],
+                    });
+
+                    if (DEBUG) {
+                        console.log(
+                            "[🌙 Moondown] LaTeX 支持已激活，优化重置：仅重析 Pending 部分",
+                        );
+                    }
+
+                    // 优化：不完全重置，只重置 Pending 状态
+                    // 这样已生成的 Stable 块（不含 $ 的部分）会保留，避免画面闪烁
+                    engine.resetPending();
+                    lastContent = ""; // 强制 parse 不跳过
+                    // 使用最新的 content prop 进行重析
+                    parse(content);
+                });
+            }
+
+            // 2. Code Highlighting 预加载
+            if (
+                !prismPreloaded &&
+                (increment.includes("```") || increment.includes("~~~"))
+            ) {
+                prismPreloaded = true;
+                if (DEBUG) {
+                    console.log(
+                        "[🌙 Moondown] 检测到代码块标记，预加载 Prism 依赖...",
+                    );
+                }
+                loadPrism();
+            }
+        }
+        // -----------------------
+
         lastContent = text;
         blocks = engine.process(text);
         lastParseTime = Date.now();
@@ -111,51 +168,12 @@
         throttledParse(content);
     });
 
+    import { loadPrism } from "./extensions/prismLoader";
+
     // 标记当前实例是否已启用 Math 支持
     let mathEnabled = false;
-
-    /**
-     * 自动检测 LaTeX 语法并按需加载支持库
-     * 策略：
-     * 1. 检查是否存在 $ 符号（避免无关文本加载）
-     * 2. 调用 mathLoader 懒加载
-     * 3. 加载完成后，更新引擎配置并重置解析
-     */
-    $effect(() => {
-        if (!content || !engine) return;
-
-        // 如果当前实例已经启用了 Math，无需重复处理
-        if (mathEnabled) return;
-
-        // 简单的启发式检测：检查是否包含 $ 符号
-        // 注意：这可能会有假阳性，但作为懒加载触发条件是可以接受的
-        if (content.includes("$")) {
-            // 立即标记为已启用，防止在异步加载期间重复触发
-            mathEnabled = true;
-
-            mathLoader.load().then((modules) => {
-                if (!engine) return;
-
-                // 扩展引擎配置
-                engine.addExtensions({
-                    extensions: [modules.math()],
-                    mdastExtensions: [modules.mathFromMarkdown()],
-                });
-
-                if (DEBUG) {
-                    console.log(
-                        "[🌙 Moondown] LaTeX 支持已激活，重置引擎以应用新语法",
-                    );
-                }
-
-                // 重置引擎并立即重新解析完整内容
-                // 因为语法规则变了，之前的增量解析可能不正确（例如 $ 被当成了普通文本）
-                engine.reset();
-                lastContent = ""; // 强制 parse 不跳过
-                parse(content);
-            });
-        }
-    });
+    // 标记当前实例是否已触发 Prism 预加载
+    let prismPreloaded = false;
 
     // 单独监听流结束 - 只有 isStreaming 从 true 变为 false 时才释放
     // 注意：MoonGravity 传入的 isStreaming = !isBufferComplete

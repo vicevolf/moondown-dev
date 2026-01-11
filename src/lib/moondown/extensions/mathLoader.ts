@@ -46,7 +46,7 @@ class MathLoader {
             if (!this.isCSSLoaded) {
                 try {
                     // @ts-ignore
-                    await import('./extensions/katex-min.css');
+                    await import('./katex.min.css');
                     this.isCSSLoaded = true;
                     console.log('[🌙 Moondown] 本地 KaTeX CSS 已加载');
                 } catch (e) {

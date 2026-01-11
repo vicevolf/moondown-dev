@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { mathLoader } from "../mathLoader";
+    import { mathLoader } from "./mathLoader";
 
     interface Props {
         value: string;

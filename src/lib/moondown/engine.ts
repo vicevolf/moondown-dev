@@ -284,6 +284,18 @@ export class MoondownEngine {
     }
 
     /**
+     * 重置待定状态（用于动态加载插件后触发重新解析）
+     * 不会清除已提交的 Stable 块
+     */
+    resetPending() {
+        this.log('🔄 重置待定块缓存（保留 Stable 块）', '#e67e22');
+        this.lastInputLength = 0; // 强制 process() 重新执行
+        this.currentPendingId = `moondown-pending-${this.instanceId}-${Date.now()}`;
+        // 清除缓存中的 pending 部分，保留 stable 部分
+        this.cachedResult = [...this.stableBlocks];
+    }
+
+    /**
      * 重置引擎状态
      */
     reset(): void {
