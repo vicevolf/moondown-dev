@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from "svelte";
     import { TextBuffer, type BufferState } from "./moongravity";
     import Moondown from "./Moondown.svelte";
+    import { updateDebugState, clearDebugState } from "./gravityDebugStore";
 
     let {
         content,
@@ -19,6 +20,9 @@
     let lastProcessedLength = 0;
     let hasEnded = false;
 
+    // 实例唯一标识
+    const instanceId = crypto.randomUUID();
+
     // 创建缓冲区实例
     let buffer: TextBuffer | null = null;
 
@@ -29,6 +33,18 @@
             velocity = state.velocity;
             fullContent = buffer?.getFullContent() ?? "";
             isBufferComplete = state.isComplete;
+
+            // 更新全局调试状态
+            if (import.meta.env.DEV) {
+                updateDebugState({
+                    bufferSize,
+                    velocity,
+                    revealIndex,
+                    fullContentLength: fullContent.length,
+                    isComplete: isBufferComplete,
+                    instanceId,
+                });
+            }
         });
 
         if (content) {
@@ -44,6 +60,10 @@
 
     onDestroy(() => {
         buffer?.destroy();
+        // 清理调试状态
+        if (import.meta.env.DEV) {
+            clearDebugState(instanceId);
+        }
     });
 
     // 监听内容变化，增量推送到缓冲区
@@ -68,35 +88,7 @@
             hasEnded = true;
         }
     });
-
-    // 调试模式：开发环境自动启用
-    const DEBUG = import.meta.env.DEV;
 </script>
-
-{#if DEBUG}
-    <div
-        style="
-            position: fixed;
-            top: 0.5rem;
-            right: 0.5rem;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            font-size: 0.75rem;
-            padding: 0.5rem;
-            border-radius: 0.25rem;
-            font-family: monospace;
-            z-index: 50;
-        "
-    >
-        <div style="color: #34d399; font-weight: bold; margin-bottom: 0.25rem;">
-            🌙 MoonGravity
-        </div>
-        <div>Buffer: {bufferSize} chars</div>
-        <div>Speed: {velocity.toFixed(1)} c/s</div>
-        <div>Reveal: {revealIndex} / {fullContent.length}</div>
-        <div>Complete: {isBufferComplete ? "✅" : "⏳"}</div>
-    </div>
-{/if}
 
 <Moondown
     content={fullContent}

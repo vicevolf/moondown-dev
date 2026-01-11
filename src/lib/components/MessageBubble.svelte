@@ -17,25 +17,25 @@
 	const displayText = $derived(getMessageText(message));
 </script>
 
-<div class="flex {isUser ? 'justify-end' : 'justify-start'}">
-	<div
-		class="max-w-[80%] {isUser
-			? 'bg-gradient-to-br from-slate-700 to-slate-800 text-white'
-			: 'bg-white border border-slate-200'} rounded-2xl px-4 py-3 shadow-sm"
-	>
-		<div
-			class="text-xs {isUser
-				? 'text-slate-300'
-				: 'text-slate-400'} mb-1.5 font-medium"
-		>
+<div class="chat {isUser ? 'chat-end' : 'chat-start'}">
+	<div class="chat-header mb-1">
+		<span class="text-xs opacity-50 font-medium">
 			{isUser ? "👤 你" : "✨ AI"}
-		</div>
+		</span>
+	</div>
 
-		<div class="break-words">
+	<div
+		class="chat-bubble {isUser
+			? 'chat-bubble-primary'
+			: 'bg-white text-base-content border border-base-200'}"
+	>
+		<div class="break-words min-w-0">
 			{#if isUser}
 				<span class="whitespace-pre-wrap">{displayText}</span>
 			{:else}
-				<MoonGravity content={displayText} {isStreaming} />
+				<div class="markdown-body">
+					<MoonGravity content={displayText} {isStreaming} />
+				</div>
 			{/if}
 		</div>
 	</div>

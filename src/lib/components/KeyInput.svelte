@@ -1,42 +1,42 @@
 <script lang="ts">
-	import { saveApiKey } from '$lib/indexeddb';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { saveApiKey } from "$lib/indexeddb";
 
 	let { onKeySet }: { onKeySet: (key: string) => void } = $props();
 
-	let apiKey = $state('');
+	let apiKey = $state("");
 	let showKey = $state(false);
-	let error = $state('');
+	let error = $state("");
 	let loading = $state(false);
 
 	async function handleSubmit() {
-		error = '';
-		
+		error = "";
+
 		if (!apiKey.trim()) {
-			error = '请输入 API 密钥';
+			error = "请输入 API 密钥";
 			return;
 		}
 
-		if (!apiKey.startsWith('sk-or-v1-')) {
-			error = '密钥格式不正确,应以 sk-or-v1- 开头';
+		if (!apiKey.startsWith("sk-or-v1-")) {
+			error = "密钥格式不正确,应以 sk-or-v1- 开头";
 			return;
 		}
 
 		loading = true;
-		
+
 		try {
 			// Test the API key by making a simple request
-			const testResponse = await fetch('https://openrouter.ai/api/v1/models', {
-				headers: {
-					'Authorization': `Bearer ${apiKey}`
-				}
-			});
+			const testResponse = await fetch(
+				"https://openrouter.ai/api/v1/models",
+				{
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+					},
+				},
+			);
 
 			if (!testResponse.ok) {
 				if (testResponse.status === 401) {
-					error = 'API 密钥无效，请检查密钥是否正确';
+					error = "API 密钥无效，请检查密钥是否正确";
 				} else {
 					error = `验证失败 (${testResponse.status})`;
 				}
@@ -48,10 +48,10 @@
 			onKeySet(apiKey);
 		} catch (e: unknown) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			if (errorMessage?.includes('fetch')) {
-				error = '网络连接失败，请检查网络';
+			if (errorMessage?.includes("fetch")) {
+				error = "网络连接失败，请检查网络";
 			} else {
-				error = '保存密钥失败: ' + errorMessage;
+				error = "保存密钥失败: " + errorMessage;
 			}
 		} finally {
 			loading = false;
@@ -59,78 +59,110 @@
 	}
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
-	<Card class="max-w-md w-full shadow-lg border-slate-200">
-		<CardHeader class="text-center pb-2">
-			<div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl flex items-center justify-center shadow-md">
-				<span class="text-2xl">✨</span>
+<div class="min-h-screen flex items-center justify-center bg-base-200 px-4">
+	<div class="card w-full max-w-md bg-base-100 shadow-xl">
+		<div class="card-body">
+			<div class="text-center pb-2">
+				<div
+					class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center shadow-md"
+				>
+					<span class="text-2xl">✨</span>
+				</div>
+				<h2 class="card-title justify-center text-2xl">AI 聊天</h2>
+				<p class="text-base-content/60">OpenRouter 驱动</p>
 			</div>
-			<CardTitle class="text-2xl text-slate-800">AI 聊天</CardTitle>
-			<CardDescription class="text-slate-500">OpenRouter 驱动</CardDescription>
-		</CardHeader>
-		<CardContent>
 
-		<div class="mb-6 p-4 bg-slate-50 rounded-xl text-sm text-slate-600 border border-slate-100">
-			<p class="font-semibold mb-2 text-slate-700">🔑 需要 API 密钥</p>
-			<p class="mb-2">请输入您的 OpenRouter API 密钥开始使用。</p>
-			<p class="mb-3">密钥将安全地存储在您的浏览器本地，不会上传到任何服务器。</p>
-			<a 
-				href="https://openrouter.ai/keys" 
-				target="_blank" 
-				rel="noopener noreferrer"
-				class="inline-flex items-center text-slate-700 hover:text-slate-900 font-medium transition-colors"
-			>
-				获取 OpenRouter API 密钥 <span class="ml-1">→</span>
-			</a>
-		</div>
-
-		<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
-			<div class="space-y-2">
-				<label for="apiKey" class="block text-sm font-medium text-gray-700">
-					API 密钥
-				</label>
-				<div class="relative">
-					<Input
-						id="apiKey"
-						type={showKey ? 'text' : 'password'}
-						bind:value={apiKey}
-						placeholder="sk-or-v1-..."
-						disabled={loading}
-						class="pr-20"
-					/>
-					<Button
-						type="button"
-						onclick={() => showKey = !showKey}
-						variant="ghost"
-						size="sm"
-						class="absolute right-1 top-1/2 -translate-y-1/2 h-8"
+			<div class="alert alert-info text-sm mb-6">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					class="stroke-current shrink-0 w-6 h-6"
+					><path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					></path></svg
+				>
+				<div>
+					<h3 class="font-bold">需要 API 密钥</h3>
+					<div class="text-xs">
+						密钥将安全地存储在您的浏览器本地，不经过中间服务器。
+					</div>
+					<a
+						href="https://openrouter.ai/keys"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="link link-primary font-bold text-xs"
 					>
-						{showKey ? '隐藏' : '显示'}
-					</Button>
+						获取 OpenRouter API 密钥 →
+					</a>
 				</div>
 			</div>
 
-			{#if error}
-				<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-					{error}
-				</div>
-			{/if}
-
-			<Button
-				type="submit"
-				disabled={loading || !apiKey.trim()}
-				class="w-full bg-slate-800 hover:bg-slate-900 transition-all"
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleSubmit();
+				}}
+				class="form-control gap-4"
 			>
-				{loading ? '✨ 验证中...' : '开始使用 →'}
-			</Button>
-		</form>
+				<div>
+					<label for="apiKey" class="label">
+						<span class="label-text">API 密钥</span>
+					</label>
+					<div class="join w-full">
+						<input
+							id="apiKey"
+							type={showKey ? "text" : "password"}
+							bind:value={apiKey}
+							placeholder="sk-or-v1-..."
+							disabled={loading}
+							class="input input-bordered join-item w-full"
+						/>
+						<button
+							type="button"
+							onclick={() => (showKey = !showKey)}
+							class="btn join-item"
+						>
+							{showKey ? "隐藏" : "显示"}
+						</button>
+					</div>
+				</div>
 
-		</CardContent>
-		<CardFooter class="flex-col pt-2">
-			<div class="w-full p-3 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-100">
-				<p class="font-semibold mb-1 text-slate-600">🔒 隐私说明</p>
-				<p>您的密钥仅存储在浏览器的 IndexedDB 中，通过 HTTPS 直接发送到 OpenRouter API，不经过任何中间服务器。</p>
+				{#if error}
+					<div class="alert alert-error text-sm py-2">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="stroke-current shrink-0 h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							><path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+							/></svg
+						>
+						<span>{error}</span>
+					</div>
+				{/if}
+
+				<button
+					type="submit"
+					disabled={loading || !apiKey.trim()}
+					class="btn btn-primary w-full"
+				>
+					{loading ? "✨ 验证中..." : "开始使用 →"}
+				</button>
+			</form>
+
+			<div class="divider"></div>
+
+			<div class="text-xs text-center text-base-content/50">
+				🔒 点击开始即表示您同意我们的隐私政策
 			</div>
-		</CardFooter>
-	</Card>
+		</div>
+	</div>
 </div>
