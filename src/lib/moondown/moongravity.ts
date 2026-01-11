@@ -6,11 +6,14 @@
  *        支持预渲染 + 渐显模式
  */
 
-/** 缓冲区目标持续时间（秒） */
-const BUFFER_DURATION = 3.0;
+/** 基准节流时间（秒） */
+export const BASE_THROTTLE_SECONDS = 0.8;
 
-/** 收尾时的最大持续时间（秒） */
-const FLUSH_DURATION = 2.0;
+/** 缓冲区目标持续时间（秒）= 3x 基准 */
+const BUFFER_DURATION = BASE_THROTTLE_SECONDS * 3.0;
+
+/** 收尾时的最大持续时间（秒）= 2x 基准 */
+const FLUSH_DURATION = BASE_THROTTLE_SECONDS * 2.0;
 
 export interface BufferState {
     /** 当前应显示到第几个字符（0-indexed, exclusive） */
@@ -57,6 +60,9 @@ class SpringPhysics {
     }
 }
 
+// 调试开关：开发模式自动启用
+const DEBUG = import.meta.env.DEV;
+
 export class TextBuffer {
     /** 完整内容（网络接收的全部文本） */
     private fullContent: string = '';
@@ -73,6 +79,12 @@ export class TextBuffer {
 
     private onUpdate: BufferCallback;
 
+    // 时间戳追踪（用于最终汇报）
+    private timeFirstCharReceived: number = 0;   // 收到首字
+    private timeFirstCharRevealed: number = 0;   // 首字上屏
+    private timeLastCharReceived: number = 0;    // 收到尾字
+    private hasReportedStats: boolean = false;   // 避免重复汇报
+
     constructor(onUpdate: BufferCallback) {
         this.onUpdate = onUpdate;
     }
@@ -88,6 +100,11 @@ export class TextBuffer {
     }
 
     push(text: string): void {
+        // 记录：收到首字
+        if (this.timeFirstCharReceived === 0 && text.length > 0) {
+            this.timeFirstCharReceived = performance.now();
+        }
+
         this.fullContent += text;
         if (!this.isRunning) {
             this.start();
@@ -96,6 +113,10 @@ export class TextBuffer {
 
     end(): void {
         this.isEnded = true;
+        // 记录：收到尾字
+        if (this.timeLastCharReceived === 0) {
+            this.timeLastCharReceived = performance.now();
+        }
     }
 
     reset(): void {
@@ -106,6 +127,11 @@ export class TextBuffer {
         this.charAccumulator = 0;
         this.isEnded = false;
         this.endVelocity = null;
+        // 重置时间戳追踪
+        this.timeFirstCharReceived = 0;
+        this.timeFirstCharRevealed = 0;
+        this.timeLastCharReceived = 0;
+        this.hasReportedStats = false;
         this.notifyUpdate();
     }
 
@@ -163,7 +189,14 @@ export class TextBuffer {
         const remaining = this.fullContent.length - this.revealIndex;
         if (charsToReveal > 0 && remaining > 0) {
             const actualChars = Math.min(charsToReveal, remaining);
+            const prevRevealIndex = this.revealIndex;
             this.revealIndex += actualChars;
+
+            // 记录：首字上屏
+            if (this.timeFirstCharRevealed === 0 && prevRevealIndex === 0 && this.revealIndex > 0) {
+                this.timeFirstCharRevealed = performance.now();
+            }
+
             this.notifyUpdate();
         }
 
@@ -179,6 +212,28 @@ export class TextBuffer {
     private notifyUpdate(): void {
         const remaining = this.fullContent.length - this.revealIndex;
         const isComplete = this.isEnded && remaining === 0 && !this.isRunning;
+
+        // 尾字上屏时统一汇报
+        if (isComplete && DEBUG && !this.hasReportedStats && this.timeFirstCharReceived > 0) {
+            this.hasReportedStats = true;
+            const now = performance.now();
+            const firstCharDelay = this.timeFirstCharRevealed - this.timeFirstCharReceived;
+            const networkTime = this.timeLastCharReceived - this.timeFirstCharReceived;
+            const totalTime = now - this.timeFirstCharReceived;
+
+            console.log(
+                `%c[🌙 Moondown] 流式完成%c | 首字延迟 %c${firstCharDelay.toFixed(0)}ms%c | 网络耗时 %c${networkTime.toFixed(0)}ms%c | 总耗时 %c${totalTime.toFixed(0)}ms%c | 总字符 %c${this.fullContent.length}`,
+                'color: #9b59b6; font-weight: bold',
+                'color: #888',
+                'color: #2ecc71; font-weight: bold',
+                'color: #888',
+                'color: #e67e22; font-weight: bold',
+                'color: #888',
+                'color: #3498db; font-weight: bold',
+                'color: #888',
+                'color: #888; font-weight: bold'
+            );
+        }
 
         this.onUpdate({
             revealIndex: this.revealIndex,

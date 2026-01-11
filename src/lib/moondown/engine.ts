@@ -44,9 +44,6 @@ export class MoondownEngine {
     private cachedResult: RenderBlock[] = [];
     private lastStableCount = 0; // 追踪上次稳定块数量，用于结构共享
 
-    // 字符偏移追踪：每个稳定块消费的字符数
-    private stableCharOffset = 0;
-
     private parseOptions = {
         extensions: [gfm()],
         mdastExtensions: [gfmFromMarkdown()]
@@ -59,13 +56,32 @@ export class MoondownEngine {
     }
 
     /**
-     * 递归标注 AST 节点的字符范围
+     * 递归标注 AST 节点的原始文本范围
+     * 使用 AST 节点的 position 信息，确保与原始文本长度一致
      * @param node AST 节点
-     * @param offset 当前字符偏移量
-     * @returns 处理后的字符偏移量
+     * @param baseOffset 基础偏移量（用于增量解析时的偏移校正）
+     * @returns 节点的结束偏移量
      */
-    private annotateRanges(node: RangedNode, offset: number): number {
-        const startOffset = offset;
+    private annotateRanges(node: RangedNode, baseOffset: number): number {
+        // 优先使用 AST 的 position 信息
+        if (node.position) {
+            const start = baseOffset + (node.position.start.offset ?? 0);
+            const end = baseOffset + (node.position.end.offset ?? 0);
+            node.__range = { charStart: start, charEnd: end };
+
+            // 递归处理子节点（确保它们也有 __range）
+            if ('children' in node) {
+                const parentNode = node as RangedNode<Parent>;
+                for (const child of parentNode.children) {
+                    this.annotateRanges(child as RangedNode, baseOffset);
+                }
+            }
+
+            return end;
+        }
+
+        // 兜底：无 position 信息时使用可见字符计数（不应该发生）
+        const startOffset = baseOffset;
 
         // 文本节点：直接计算字符长度
         if (node.type === 'text') {
@@ -199,8 +215,9 @@ export class MoondownEngine {
                     // 归档到 Stable 区（带范围标注）
                     for (const node of newStableNodes) {
                         const rangedNode = node as RangedNode;
-                        const blockCharStart = this.stableCharOffset;
-                        const blockCharEnd = this.annotateRanges(rangedNode, blockCharStart);
+                        // 使用 cursor 作为基础偏移，annotateRanges 会使用 AST position 计算范围
+                        const blockCharEnd = this.annotateRanges(rangedNode, this.cursor);
+                        const blockCharStart = rangedNode.__range?.charStart ?? this.cursor;
 
                         this.stableBlocks.push({
                             id: `moondown-stable-${this.instanceId}-${++this.blockCounter}`,
@@ -208,11 +225,9 @@ export class MoondownEngine {
                             node: rangedNode,
                             range: { charStart: blockCharStart, charEnd: blockCharEnd }
                         });
-
-                        this.stableCharOffset = blockCharEnd;
                     }
 
-                    this.log(`✅ 提交 ${newStableNodes.length} 个稳定块 (${newStableNodes.map(n => n.type).join(', ')}) | 总稳定块: ${this.stableBlocks.length} | 字符范围: 0-${this.stableCharOffset}`, '#27ae60');
+                    this.log(`✅ 提交 ${newStableNodes.length} 个稳定块 (${newStableNodes.map(n => n.type).join(', ')}) | 总稳定块: ${this.stableBlocks.length} | 字符范围: 0-${this.cursor + consumedLength}`, '#27ae60');
 
                     // 推进游标
                     const oldCursor = this.cursor;
@@ -229,8 +244,9 @@ export class MoondownEngine {
         const pendingBlocks: RenderBlock[] = [];
         if (children.length > 0) {
             const pendingNode = children[children.length - 1] as RangedNode;
-            const blockCharStart = this.stableCharOffset;
-            const blockCharEnd = this.annotateRanges(pendingNode, blockCharStart);
+            // 使用 cursor 作为基础偏移，annotateRanges 会使用 AST position 计算范围
+            const blockCharEnd = this.annotateRanges(pendingNode, this.cursor);
+            const blockCharStart = pendingNode.__range?.charStart ?? this.cursor;
 
             pendingBlocks.push({
                 id: this.currentPendingId,
@@ -262,6 +278,5 @@ export class MoondownEngine {
         this.lastInputLength = 0;
         this.cachedResult = [];
         this.lastStableCount = 0;
-        this.stableCharOffset = 0;
     }
 }

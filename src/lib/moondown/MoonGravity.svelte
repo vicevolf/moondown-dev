@@ -7,7 +7,13 @@
     let {
         content,
         isStreaming = true,
-    }: { content: string; isStreaming?: boolean } = $props();
+        onContentUpdate,
+    }: {
+        content: string;
+        isStreaming?: boolean;
+        /** 内容渲染更新时的回调，用于触发吸底滚动等外部行为 */
+        onContentUpdate?: () => void;
+    } = $props();
 
     // 缓冲区状态
     let fullContent = $state("");
@@ -28,11 +34,27 @@
 
     onMount(() => {
         buffer = new TextBuffer((state: BufferState) => {
+            const prevComplete = isBufferComplete;
             revealIndex = state.revealIndex;
             bufferSize = state.bufferSize;
             velocity = state.velocity;
             fullContent = buffer?.getFullContent() ?? "";
             isBufferComplete = state.isComplete;
+
+            // 调试：isComplete 状态变化
+            if (import.meta.env.DEV && !prevComplete && isBufferComplete) {
+                console.log(
+                    `%c[🌙 MoonGravity] isBufferComplete 变为 true%c | fullContent长度: %c${fullContent.length}%c | revealIndex: %c${revealIndex}`,
+                    "color: #e74c3c; font-weight: bold",
+                    "color: #888",
+                    "color: #3498db; font-weight: bold",
+                    "color: #888",
+                    "color: #9b59b6; font-weight: bold",
+                );
+            }
+
+            // 触发内容更新回调
+            onContentUpdate?.();
 
             // 更新全局调试状态
             if (import.meta.env.DEV) {
@@ -86,6 +108,16 @@
         if (!isStreaming) {
             buffer.end();
             hasEnded = true;
+            if (import.meta.env.DEV) {
+                console.log(
+                    `%c[🌙 MoonGravity] 流结束信号%c | fullContent长度: %c${fullContent.length}%c | revealIndex: %c${revealIndex}`,
+                    "color: #e67e22; font-weight: bold",
+                    "color: #888",
+                    "color: #3498db; font-weight: bold",
+                    "color: #888",
+                    "color: #9b59b6; font-weight: bold",
+                );
+            }
         }
     });
 </script>

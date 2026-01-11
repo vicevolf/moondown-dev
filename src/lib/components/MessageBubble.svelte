@@ -5,7 +5,13 @@
 	let {
 		message,
 		isStreaming = false,
-	}: { message: UIMessage; isStreaming?: boolean } = $props();
+		onContentUpdate,
+	}: {
+		message: UIMessage;
+		isStreaming?: boolean;
+		/** 内容渲染更新时的回调，用于触发吸底滚动等外部行为 */
+		onContentUpdate?: () => void;
+	} = $props();
 	function getMessageText(msg: UIMessage): string {
 		return msg.parts
 			.filter((p) => p.type === "text")
@@ -34,7 +40,11 @@
 				<span class="whitespace-pre-wrap">{displayText}</span>
 			{:else}
 				<div class="markdown-body">
-					<MoonGravity content={displayText} {isStreaming} />
+					<MoonGravity
+						content={displayText}
+						{isStreaming}
+						{onContentUpdate}
+					/>
 				</div>
 			{/if}
 		</div>

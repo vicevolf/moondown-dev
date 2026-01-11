@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onDestroy } from "svelte";
     import { MoondownEngine, type RenderBlock } from "./engine";
+    import { BASE_THROTTLE_SECONDS } from "./moongravity";
     import MoonRider from "./MoonRider.svelte";
 
     // 导入 Moondown 排版系统 (缺省样式)
@@ -25,6 +26,9 @@
         isStreaming = true,
     }: Props = $props();
 
+    // 调试开关
+    const DEBUG = import.meta.env.DEV;
+
     // 引擎实例
     let engine: MoondownEngine | null = new MoondownEngine();
 
@@ -34,8 +38,8 @@
     // 渲染结果
     let blocks = $state<RenderBlock[]>([]);
 
-    // 节流配置
-    const BASE_INTERVAL = 1000; // 基准间隔 1 秒
+    // 节流配置（基于 moongravity 的统一基准）
+    const BASE_INTERVAL = BASE_THROTTLE_SECONDS * 1000; // 1x 基准
 
     let parseTimeout: ReturnType<typeof setTimeout> | null = null;
     let lastParseTime = 0;
@@ -47,7 +51,15 @@
     }
 
     function parse(text: string) {
-        if (!engine || text === lastContent) return;
+        if (!engine || text === lastContent) {
+            if (DEBUG) {
+                console.log(
+                    `%c[🌙 Moondown] 跳过解析: engine=${!!engine}, 内容相同=${text === lastContent}`,
+                    "color: #95a5a6",
+                );
+            }
+            return;
+        }
         lastContent = text;
         blocks = engine.process(text);
         lastParseTime = Date.now();
@@ -103,15 +115,52 @@
     // 所以网络卡顿导致缓冲区暂时空了不会触发这里
     $effect(() => {
         if (!isStreaming && engine) {
-            // 流结束时，确保最后一次用最新内容解析
+            // 流结束时，清除待定的节流定时器
+            const hadPendingTimeout = !!parseTimeout;
             if (parseTimeout) {
                 clearTimeout(parseTimeout);
                 parseTimeout = null;
             }
-            // 强制最终解析
-            if (content !== lastContent) {
-                parse(content);
+
+            // 调试：记录流结束时的状态
+            if (DEBUG) {
+                const lastBlockRange =
+                    blocks.length > 0 ? blocks[blocks.length - 1].range : null;
+                console.log(
+                    `%c[🌙 Moondown] 流结束前状态%c | content长度: %c${content.length}%c | lastContent长度: %c${lastContent.length}%c | 最后块范围: %c${lastBlockRange ? `${lastBlockRange.charStart}-${lastBlockRange.charEnd}` : "N/A"}%c | 有待定解析: %c${hadPendingTimeout}`,
+                    "color: #e67e22; font-weight: bold",
+                    "color: #888",
+                    "color: #3498db; font-weight: bold",
+                    "color: #888",
+                    "color: #9b59b6; font-weight: bold",
+                    "color: #888",
+                    "color: #27ae60; font-weight: bold",
+                    "color: #888",
+                    hadPendingTimeout
+                        ? "color: #e74c3c; font-weight: bold"
+                        : "color: #27ae60",
+                );
             }
+
+            // 强制最终解析（无论 lastContent 状态如何）
+            // engine.process() 内部有去重逻辑，重复调用不会有性能问题
+            lastContent = content;
+            blocks = engine.process(content);
+
+            // 调试：记录最终解析结果
+            if (DEBUG) {
+                const finalBlockRange =
+                    blocks.length > 0 ? blocks[blocks.length - 1].range : null;
+                console.log(
+                    `%c[🌙 Moondown] 最终解析完成%c | 块数: %c${blocks.length}%c | 最后块范围: %c${finalBlockRange ? `${finalBlockRange.charStart}-${finalBlockRange.charEnd}` : "N/A"}`,
+                    "color: #27ae60; font-weight: bold",
+                    "color: #888",
+                    "color: #3498db; font-weight: bold",
+                    "color: #888",
+                    "color: #27ae60; font-weight: bold",
+                );
+            }
+
             console.log("%c[🌙 Moondown] 流结束，引擎已释放", "color: #27ae60");
             engine = null;
         }
