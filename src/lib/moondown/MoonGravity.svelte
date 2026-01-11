@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
-    import { TextBuffer, type BufferState } from "./moongravity";
+    import { TextBuffer, type BufferState } from "./moonGravity";
     import Moondown from "./Moondown.svelte";
-    import { updateDebugState, clearDebugState } from "./debugStore";
+    import { updateDebugState, clearDebugState } from "./extensions/debugStore";
 
     let {
         content,

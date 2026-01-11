@@ -39,7 +39,7 @@ export { default as Moondown } from './Moondown.svelte';
 export { default as MoonRider } from './MoonRider.svelte';
 
 /** 调试面板组件 */
-export { default as MoonDebug } from './MoonDebug.svelte';
+export { default as MoonDebug } from './extensions/MoonDebug.svelte';
 
 // ============================================
 // 核心引擎
@@ -61,7 +61,7 @@ export {
     TextBuffer,
     type BufferState,
     type BufferCallback
-} from './moongravity';
+} from './moonGravity';
 
 // ============================================
 // 调试工具
@@ -72,4 +72,4 @@ export {
     updateDebugState,
     clearDebugState,
     type GravityDebugState
-} from './debugStore';
+} from './extensions/debugStore';

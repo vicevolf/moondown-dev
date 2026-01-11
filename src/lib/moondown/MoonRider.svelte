@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Content, Parent } from "mdast";
     import type { RangeInfo, RangedNode } from "./engine";
-    import { highlightElement } from "./prismLoader";
+    import { highlightElement } from "./extensions/prismLoader";
 
     interface Props {
         node: Content;

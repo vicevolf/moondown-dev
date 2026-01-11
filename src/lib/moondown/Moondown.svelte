@@ -1,14 +1,14 @@
 <script lang="ts">
     import { onDestroy } from "svelte";
     import { MoondownEngine, type RenderBlock } from "./engine";
-    import { BASE_THROTTLE_SECONDS } from "./moongravity";
+    import { BASE_THROTTLE_SECONDS } from "./moonGravity";
     import MoonRider from "./MoonRider.svelte";
 
     // 导入 Moondown 排版系统 (缺省样式)
     import "./moondown.css";
 
     // 可选：增强强调效果 (加粗荧光笔背景 + 删除线主题色)
-    import "./lunar-eclipse.css";
+    import "./extensions/lunar-eclipse.css";
 
     interface Props {
         content: string;
