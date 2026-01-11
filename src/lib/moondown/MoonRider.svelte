@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Content, Parent } from "mdast";
     import type { RangeInfo, RangedNode } from "./engine";
+    import { highlightElement } from "./prismLoader";
 
     interface Props {
         node: Content;
@@ -44,6 +45,35 @@
         const visibleChars = revealIndex - nodeRange.charStart;
         return value.slice(0, visibleChars);
     }
+
+    /**
+     * Svelte action: 当代码块完成时触发 Prism 高亮
+     */
+    function highlightCode(
+        node: HTMLElement,
+        params: { lang: string; ready: boolean },
+    ) {
+        let { lang, ready } = params;
+
+        function doHighlight() {
+            if (ready && lang) {
+                highlightElement(node, lang);
+            }
+        }
+
+        doHighlight();
+
+        return {
+            update(newParams: { lang: string; ready: boolean }) {
+                // 只在从 not-ready 变为 ready 时触发高亮
+                if (!ready && newParams.ready && newParams.lang) {
+                    lang = newParams.lang;
+                    ready = newParams.ready;
+                    highlightElement(node, lang);
+                }
+            },
+        };
+    }
 </script>
 
 {#snippet renderNode(n: Content)}
@@ -72,6 +102,7 @@
             {clipText(n.value, range)}
         {/if}
     {:else if n.type === "code"}
+        {@const isComplete = visibility === "full"}
         <div class="moondown-code">
             {#if n.lang}
                 <div class="moondown-code-lang">
@@ -79,7 +110,11 @@
                 </div>
             {/if}
             <pre><code
-                    >{#if visibility === "full"}{n.value}{:else if range}{clipText(
+                    use:highlightCode={{
+                        lang: n.lang || "",
+                        ready: isComplete,
+                    }}
+                    >{#if isComplete}{n.value}{:else if range}{clipText(
                             n.value,
                             range,
                         )}{/if}</code
