@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { debugState } from "./gravityDebugStore";
+    import { debugState } from "./debugStore";
 
     const DEBUG = import.meta.env.DEV;
 </script>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { UIMessage } from "ai";
-	import MoonGravity from "$lib/moondown/MoonGravity.svelte";
+	import { MoonGravity } from "$lib/moondown";
 
 	let {
 		message,

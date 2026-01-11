@@ -4,7 +4,7 @@
 	import MessageList from "./MessageList.svelte";
 	import MessageInput from "./MessageInput.svelte";
 	import { deleteApiKey } from "$lib/indexeddb";
-	import MoonGravityDebug from "$lib/moondown/MoonGravityDebug.svelte";
+	import { MoonDebug } from "$lib/moondown";
 
 	let { apiKey, onKeyDeleted }: { apiKey: string; onKeyDeleted: () => void } =
 		$props();
@@ -89,4 +89,4 @@
 </div>
 
 <!-- 全局调试面板 (仅开发环境) -->
-<MoonGravityDebug />
+<MoonDebug />

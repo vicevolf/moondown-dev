@@ -53,7 +53,7 @@ class SpringPhysics {
     }
 
     reset(): void {
-        this.velocity = 0;
+        this.velocity = 30;
     }
 }
 

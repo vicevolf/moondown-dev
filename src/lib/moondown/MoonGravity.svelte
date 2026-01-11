@@ -2,7 +2,7 @@
     import { onMount, onDestroy } from "svelte";
     import { TextBuffer, type BufferState } from "./moongravity";
     import Moondown from "./Moondown.svelte";
-    import { updateDebugState, clearDebugState } from "./gravityDebugStore";
+    import { updateDebugState, clearDebugState } from "./debugStore";
 
     let {
         content,
