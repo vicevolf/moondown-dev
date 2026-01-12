@@ -3,7 +3,7 @@
     import { MoondownEngine, type RenderBlock } from "./engine";
     import { BASE_THROTTLE_SECONDS } from "./moonGravity";
     import MoonRider from "./MoonRider.svelte";
-    import { mathLoader } from "./extensions/mathLoader";
+    // mathLoader 使用动态导入，避免首屏打包 KaTeX
     import { moonLog } from "./extensions";
 
     // 导入 Moondown 排版系统 (缺省样式)
@@ -78,21 +78,24 @@
                     Trigger: "MathSymbol",
                 });
 
-                mathLoader.load().then((modules) => {
-                    if (!engine) return;
+                // 动态导入 mathLoader，避免首屏打包 KaTeX
+                import("./extensions/mathLoader").then(({ mathLoader }) => {
+                    mathLoader.load().then((modules) => {
+                        if (!engine) return;
 
-                    // 扩展引擎配置
-                    engine.addExtensions({
-                        extensions: [modules.math()],
-                        mdastExtensions: [modules.mathFromMarkdown()],
+                        // 扩展引擎配置
+                        engine.addExtensions({
+                            extensions: [modules.math()],
+                            mdastExtensions: [modules.mathFromMarkdown()],
+                        });
+
+                        // 优化：不完全重置，只重置 Pending 状态
+                        // 这样已生成的 Stable 块（不含 $ 的部分）会保留，避免画面闪烁
+                        engine.resetPending();
+                        lastContent = ""; // 强制 parse 不跳过
+                        // 使用最新的 content prop 进行重析
+                        parse(content);
                     });
-
-                    // 优化：不完全重置，只重置 Pending 状态
-                    // 这样已生成的 Stable 块（不含 $ 的部分）会保留，避免画面闪烁
-                    engine.resetPending();
-                    lastContent = ""; // 强制 parse 不跳过
-                    // 使用最新的 content prop 进行重析
-                    parse(content);
                 });
             }
 
@@ -107,7 +110,9 @@
                     Trigger: "CodeBlock",
                 });
                 // 动态导入，避免 prismLoader 被打包到首屏
-                import("./extensions/prismLoader").then(({ loadPrism }) => loadPrism());
+                import("./extensions/prismLoader").then(({ loadPrism }) =>
+                    loadPrism(),
+                );
             }
         }
         // -----------------------

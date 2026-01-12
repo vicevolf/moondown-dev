@@ -1,8 +1,7 @@
 <script lang="ts">
     import type { Content, Parent } from "mdast";
     import type { RangeInfo, RangedNode } from "./engine";
-    import MathRenderer from "./extensions/MathRenderer.svelte";
-    import MermaidRenderer from "./extensions/MermaidRenderer.svelte";
+    // MathRenderer 和 MermaidRenderer 使用动态导入，避免首屏打包
 
     interface Props {
         node: Content;
@@ -59,7 +58,9 @@
 
         async function doHighlight() {
             if (ready && lang) {
-                const { highlightElement } = await import("./extensions/prismLoader");
+                const { highlightElement } = await import(
+                    "./extensions/prismLoader"
+                );
                 highlightElement(node, lang);
             }
         }
@@ -72,9 +73,11 @@
                 if (!ready && newParams.ready && newParams.lang) {
                     lang = newParams.lang;
                     ready = newParams.ready;
-                    import("./extensions/prismLoader").then(({ highlightElement }) => {
-                        highlightElement(node, lang);
-                    });
+                    import("./extensions/prismLoader").then(
+                        ({ highlightElement }) => {
+                            highlightElement(node, lang);
+                        },
+                    );
                 }
             },
         };
@@ -107,10 +110,12 @@
             {clipText(n.value, range)}
         {/if}
     {:else if n.type === "code" && n.lang === "mermaid"}
-        <!-- Mermaid 流程图渲染 -->
+        <!-- Mermaid 流程图渲染 (动态导入) -->
         {@const isComplete = visibility === "full"}
         {#if isComplete}
-            <MermaidRenderer value={n.value} />
+            {#await import("./extensions/MermaidRenderer.svelte") then { default: MermaidRenderer }}
+                <MermaidRenderer value={n.value} />
+            {/await}
         {:else if range}
             <!-- 流式中显示源码 -->
             <div class="moondown-code">
@@ -242,11 +247,14 @@
             {/each}
         </td>
     {:else if n.type === "math"}
+        <!-- Math 块渲染 (动态导入) -->
         {@const isComplete = visibility === "full"}
         {#if isComplete}
-            <div class="moondown-math-block">
-                <MathRenderer value={n.value} displayMode={true} />
-            </div>
+            {#await import("./extensions/MathRenderer.svelte") then { default: MathRenderer }}
+                <div class="moondown-math-block">
+                    <MathRenderer value={n.value} displayMode={true} />
+                </div>
+            {/await}
         {:else if range}
             <!-- 未完成时显示源码，避免渲染报错 -->
             <div class="moondown-math-block source">
@@ -254,11 +262,14 @@
             </div>
         {/if}
     {:else if n.type === "inlineMath"}
+        <!-- Inline Math 渲染 (动态导入) -->
         {@const isComplete = visibility === "full"}
         {#if isComplete}
-            <span class="moondown-math-inline">
-                <MathRenderer value={n.value} displayMode={false} />
-            </span>
+            {#await import("./extensions/MathRenderer.svelte") then { default: MathRenderer }}
+                <span class="moondown-math-inline">
+                    <MathRenderer value={n.value} displayMode={false} />
+                </span>
+            {/await}
         {:else if range}
             <span class="moondown-math-inline source">
                 {clipText(n.value, range)}

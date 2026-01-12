@@ -89,15 +89,16 @@ export {
 // export { highlightElement, getPrism } from './prismLoader';
 
 // ============================================
-// 数学公式
+// 数学公式 (动态导入，避免首屏加载 KaTeX)
 // ============================================
 
-export { default as MathRenderer } from './MathRenderer.svelte';
-export { mathLoader } from './mathLoader';
+// 使用方式: const { default: MathRenderer } = await import('./extensions/MathRenderer.svelte');
+// 使用方式: const { mathLoader } = await import('./extensions/mathLoader');
 
 // ============================================
-// 流程图
+// 流程图 (动态导入，避免首屏加载 Mermaid)
 // ============================================
 
-export { default as MermaidRenderer } from './MermaidRenderer.svelte';
-export { loadMermaid, renderMermaid, getMermaid } from './mermaidLoader';
+// 使用方式: const { default: MermaidRenderer } = await import('./extensions/MermaidRenderer.svelte');
+// 使用方式: const { loadMermaid, renderMermaid } = await import('./extensions/mermaidLoader');
+
