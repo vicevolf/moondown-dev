@@ -51,7 +51,10 @@
 
     function parse(text: string) {
         if (!engine || text === lastContent) {
-            moonLog('Stream', '⏭️', '解析跳过', { Engine: !!engine, SameContent: text === lastContent });
+            moonLog("Stream", "⏭️", "解析跳过", {
+                Engine: !!engine,
+                SameContent: text === lastContent,
+            });
             return;
         }
 
@@ -70,7 +73,10 @@
             // 1. LaTeX 检测
             if (!mathEnabled && increment.includes("$")) {
                 mathEnabled = true;
-                moonLog('Stream', '⚡', '插件激活', { Plugin: 'LaTeX', Trigger: 'MathSymbol' });
+                moonLog("Stream", "⚡", "插件激活", {
+                    Plugin: "LaTeX",
+                    Trigger: "MathSymbol",
+                });
 
                 mathLoader.load().then((modules) => {
                     if (!engine) return;
@@ -96,8 +102,12 @@
                 (increment.includes("```") || increment.includes("~~~"))
             ) {
                 prismPreloaded = true;
-                moonLog('Stream', '⚡', '插件激活', { Plugin: 'Prism', Trigger: 'CodeBlock' });
-                loadPrism();
+                moonLog("Stream", "⚡", "插件激活", {
+                    Plugin: "Prism",
+                    Trigger: "CodeBlock",
+                });
+                // 动态导入，避免 prismLoader 被打包到首屏
+                import("./extensions/prismLoader").then(({ loadPrism }) => loadPrism());
             }
         }
         // -----------------------
@@ -152,8 +162,6 @@
         throttledParse(content);
     });
 
-    import { loadPrism } from "./extensions/prismLoader";
-
     // 标记当前实例是否已启用 Math 支持
     let mathEnabled = false;
     // 标记当前实例是否已触发 Prism 预加载
@@ -173,11 +181,14 @@
             }
 
             // 调试：记录流结束时的状态
-            const lastBlockRange = blocks.length > 0 ? blocks[blocks.length - 1].range : null;
-            moonLog('Stream', '📊', '流态快照', {
+            const lastBlockRange =
+                blocks.length > 0 ? blocks[blocks.length - 1].range : null;
+            moonLog("Stream", "📊", "流态快照", {
                 Len: content.length,
-                LastBlock: lastBlockRange ? `${lastBlockRange.charStart}-${lastBlockRange.charEnd}` : 'N/A',
-                Pending: hadPendingTimeout
+                LastBlock: lastBlockRange
+                    ? `${lastBlockRange.charStart}-${lastBlockRange.charEnd}`
+                    : "N/A",
+                Pending: hadPendingTimeout,
             });
 
             // 强制最终解析（无论 lastContent 状态如何）
@@ -186,13 +197,16 @@
             blocks = engine.process(content);
 
             // 调试：记录最终解析结果
-            const finalBlockRange = blocks.length > 0 ? blocks[blocks.length - 1].range : null;
-            moonLog('Stream', '✅', '解析终结', {
+            const finalBlockRange =
+                blocks.length > 0 ? blocks[blocks.length - 1].range : null;
+            moonLog("Stream", "✅", "解析终结", {
                 Blocks: blocks.length,
-                LastBlock: finalBlockRange ? `${finalBlockRange.charStart}-${finalBlockRange.charEnd}` : 'N/A'
+                LastBlock: finalBlockRange
+                    ? `${finalBlockRange.charStart}-${finalBlockRange.charEnd}`
+                    : "N/A",
             });
 
-            moonLog('Stream', '🏁', '实例销毁', { Action: 'Engine Released' });
+            moonLog("Stream", "🏁", "实例销毁", { Action: "Engine Released" });
             engine = null;
         }
     });

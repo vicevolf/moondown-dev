@@ -40,20 +40,20 @@ export function moonLog(
     instanceId?: string
 ): void {
     if (!DEBUG) return;
-    
+
     const color = MODULE_COLORS[module];
     const idSuffix = instanceId ? ` ${instanceId.slice(0, 4)}` : '';
     const prefix = `[🌚 moondown ${module}${idSuffix}]`;
-    
+
     let message = `${prefix} ${emoji} ${desc}`;
-    
+
     if (data) {
         const pairs = Object.entries(data)
             .map(([k, v]) => `${k}: ${v}`)
             .join(' | ');
         message += ` | ${pairs}`;
     }
-    
+
     console.log(`%c${message}`, `color: ${color}`);
 }
 
@@ -82,10 +82,11 @@ export {
 } from './debugStore';
 
 // ============================================
-// 代码高亮
+// 代码高亮 (动态导入，避免首屏加载)
 // ============================================
 
-export { highlightElement, getPrism } from './prismLoader';
+// 使用方式: const { highlightElement } = await import('./extensions/prismLoader');
+// export { highlightElement, getPrism } from './prismLoader';
 
 // ============================================
 // 数学公式
@@ -93,3 +94,10 @@ export { highlightElement, getPrism } from './prismLoader';
 
 export { default as MathRenderer } from './MathRenderer.svelte';
 export { mathLoader } from './mathLoader';
+
+// ============================================
+// 流程图
+// ============================================
+
+export { default as MermaidRenderer } from './MermaidRenderer.svelte';
+export { loadMermaid, renderMermaid, getMermaid } from './mermaidLoader';

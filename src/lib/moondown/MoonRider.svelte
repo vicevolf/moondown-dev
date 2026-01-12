@@ -1,8 +1,8 @@
 <script lang="ts">
     import type { Content, Parent } from "mdast";
     import type { RangeInfo, RangedNode } from "./engine";
-    import { highlightElement } from "./extensions/prismLoader";
     import MathRenderer from "./extensions/MathRenderer.svelte";
+    import MermaidRenderer from "./extensions/MermaidRenderer.svelte";
 
     interface Props {
         node: Content;
@@ -49,6 +49,7 @@
 
     /**
      * Svelte action: 当代码块完成时触发 Prism 高亮
+     * 使用动态导入，避免 prismLoader 被打包到首屏
      */
     function highlightCode(
         node: HTMLElement,
@@ -56,8 +57,9 @@
     ) {
         let { lang, ready } = params;
 
-        function doHighlight() {
+        async function doHighlight() {
             if (ready && lang) {
+                const { highlightElement } = await import("./extensions/prismLoader");
                 highlightElement(node, lang);
             }
         }
@@ -70,7 +72,9 @@
                 if (!ready && newParams.ready && newParams.lang) {
                     lang = newParams.lang;
                     ready = newParams.ready;
-                    highlightElement(node, lang);
+                    import("./extensions/prismLoader").then(({ highlightElement }) => {
+                        highlightElement(node, lang);
+                    });
                 }
             },
         };
@@ -102,7 +106,20 @@
         {:else if range}
             {clipText(n.value, range)}
         {/if}
+    {:else if n.type === "code" && n.lang === "mermaid"}
+        <!-- Mermaid 流程图渲染 -->
+        {@const isComplete = visibility === "full"}
+        {#if isComplete}
+            <MermaidRenderer value={n.value} />
+        {:else if range}
+            <!-- 流式中显示源码 -->
+            <div class="moondown-code">
+                <div class="moondown-code-lang">mermaid</div>
+                <pre><code>{clipText(n.value, range)}</code></pre>
+            </div>
+        {/if}
     {:else if n.type === "code"}
+        <!-- 普通代码块 (Prism 高亮) -->
         {@const isComplete = visibility === "full"}
         <div class="moondown-code">
             {#if n.lang}

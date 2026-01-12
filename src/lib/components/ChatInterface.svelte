@@ -4,7 +4,6 @@
 	import MessageList from "./MessageList.svelte";
 	import MessageInput from "./MessageInput.svelte";
 	import { deleteApiKey } from "$lib/indexeddb";
-	import { MoonDebug } from "$lib/moondown";
 
 	let { apiKey, onKeyDeleted }: { apiKey: string; onKeyDeleted: () => void } =
 		$props();
@@ -16,6 +15,18 @@
 			api: "/api/chat",
 			body: () => (apiKey === "env" ? {} : { apiKey }),
 		}),
+	});
+
+	// 延迟加载 MoonDebug 组件
+	let MoonDebugComponent: typeof import("$lib/moondown").MoonDebug | null =
+		$state(null);
+
+	$effect(() => {
+		if (chat.messages.length > 0 && !MoonDebugComponent) {
+			import("$lib/moondown").then((mod) => {
+				MoonDebugComponent = mod.MoonDebug;
+			});
+		}
 	});
 
 	function handleSendMessage(text: string) {
@@ -88,5 +99,7 @@
 	<MessageInput onSend={handleSendMessage} disabled={!canSend} />
 </div>
 
-<!-- 全局调试面板 (仅开发环境) -->
-<MoonDebug />
+<!-- 全局调试面板 (仅开发环境，有消息后加载) -->
+{#if MoonDebugComponent}
+	<MoonDebugComponent />
+{/if}
